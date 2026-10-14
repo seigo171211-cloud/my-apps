@@ -3,7 +3,9 @@
 // Layout: phone held in landscape, P1 uses the left half, P2 the right half.
 'use strict';
 const TouchPad=(()=>{
-  const isTouch=matchMedia('(hover:none) and (pointer:coarse)').matches;
+  // iPadOS Safari reports itself as a Mac, and with a keyboard/trackpad attached it matches (hover:hover),
+  // so also treat a multi-touch "Macintosh" as touch. Real Macs report maxTouchPoints 0.
+  const isTouch=matchMedia('(hover:none) and (pointer:coarse)').matches||(navigator.maxTouchPoints>0&&/Macintosh/.test(navigator.userAgent));
   const stick=[{x:0,y:0,on:false},{x:0,y:0,on:false}];
   const CSS=`
 body.touch{touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;overscroll-behavior:none}
@@ -74,6 +76,19 @@ body.touch .touchnote{display:block}
     b.addEventListener('pointerup',end);b.addEventListener('pointercancel',end);b.addEventListener('lostpointercapture',end);
     zone.appendChild(b);
   }
+  // Stop double-tap / pinch zoom (iOS ignores user-scalable=no alone), and undo it if it happens anyway:
+  // with touch-action:none on the page the user could not pinch back out.
+  function noZoom(){
+    const VP='width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover';
+    const vp=document.querySelector('meta[name="viewport"]');if(vp)vp.content=VP;
+    document.documentElement.style.touchAction='none';
+    for(const t of['gesturestart','gesturechange','gestureend'])document.addEventListener(t,e=>e.preventDefault(),{passive:false});
+    let last=0;
+    document.addEventListener('touchend',e=>{const n=e.timeStamp;if(n-last<350)e.preventDefault();last=n},{passive:false});
+    document.addEventListener('dblclick',e=>e.preventDefault(),{passive:false});
+    const vv=window.visualViewport;
+    if(vv&&vp){const fix=()=>{if(vv.scale>1.01){vp.content=VP+', minimum-scale=1';setTimeout(()=>{vp.content=VP;scrollTo(0,0)},60)}};vv.addEventListener('resize',fix);fix()}
+  }
   // o: {frame, controls:[spec,spec], down(p,a), up(p,a), pause(), unlock()}
   // spec: {pad:'dpad'|'stick'|'lr'|null, act:'label'|null}
   function init(o){
@@ -98,6 +113,7 @@ body.touch .touchnote{display:block}
     document.body.appendChild(rot);
     document.querySelectorAll('.touchnote').forEach(n=>n.textContent=o.note||'スマホは横向きにして、画面のボタンで遊べます');
     addEventListener('contextmenu',e=>e.preventDefault());
+    noZoom();
     return true;
   }
   return{isTouch,init,stick};
