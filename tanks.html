@@ -72,6 +72,7 @@ body{background:radial-gradient(1200px 600px at 50% -10%,#2a2516 0%,#0b0a07 62%)
   </div>
 </div>
 </div>
+<script src="touch.js"></script>
 <script src="arcade.js"></script>
 <script>
 const {tone,noise,show,hide,$}=Arcade;
@@ -238,17 +239,23 @@ function explode(t){
 }
 function moveTank(t,dt){
   const ax=Arcade.axis(t.i);
+  let turn=ax.x,drive=-ax.y;
+  const sk=TouchPad.stick[t.i];
+  if(sk.on&&(sk.x||sk.y)){ // touch stick: point where you want to go
+    const d=((Math.atan2(sk.y,sk.x)-t.a)%(Math.PI*2)+Math.PI*3)%(Math.PI*2)-Math.PI;
+    turn=Math.max(-1,Math.min(1,d*2.5));drive=Math.abs(d)<1.1?Math.min(1,Math.hypot(sk.x,sk.y)*1.3):0;
+  }
   const sp=(t.turbo>0?1.55:1);
-  t.a+=ax.x*3.3*dt*(t.turbo>0?1.25:1);
-  const v=-ax.y*(ax.y<0?200:150)*sp;
+  t.a+=turn*3.3*dt*(t.turbo>0?1.25:1);
+  const v=drive*(drive>0?200:150)*sp;
   const ox=t.x,oy=t.y;
   t.x+=Math.cos(t.a)*v*dt;t.y+=Math.sin(t.a)*v*dt;
   for(let k=0;k<2;k++)pushOut(t);
   const o=TK[1-t.i];
   if(o.alive){const dx=t.x-o.x,dy=t.y-o.y,d=Math.hypot(dx,dy);if(d<R*2&&d>0){const p=(R*2-d)/2;t.x+=dx/d*p;t.y+=dy/d*p;o.x-=dx/d*p;o.y-=dy/d*p;pushOut(o);pushOut(t)}}
   const moved=Math.hypot(t.x-ox,t.y-oy);
-  if(moved>0||ax.x){t.tread+=moved+Math.abs(ax.x)*2;
-    if(Math.floor(t.tread/14)!==Math.floor((t.tread-moved-Math.abs(ax.x)*2)/14)){
+  if(moved>0||turn){t.tread+=moved+Math.abs(turn)*2;
+    if(Math.floor(t.tread/14)!==Math.floor((t.tread-moved-Math.abs(turn)*2)/14)){
       dctx.fillStyle='rgba(0,0,0,.16)';
       const px=-Math.sin(t.a),py=Math.cos(t.a);
       for(const s of[-1,1]){dctx.save();dctx.translate(t.x+px*s*16,t.y+py*s*16);dctx.rotate(t.a);dctx.fillRect(-3,-4,6,8);dctx.restore()}
@@ -410,6 +417,7 @@ $('resumeBtn').onclick=togglePause;$('quitBtn').onclick=toTitle;$('titleBtn').on
 $('againBtn').onclick=()=>{Arcade.unlock();startMatch()};$('startBtn').onclick=()=>{Arcade.unlock();startMatch()};
 document.querySelectorAll('#segWin button').forEach(b=>b.onclick=()=>{winTarget=+b.dataset.v;document.querySelectorAll('#segWin button').forEach(x=>x.setAttribute('aria-pressed',x===b));paintPips()});
 paintPips();pickMap();TK.forEach(t=>t.alive=false);
+Arcade.touch([{pad:'stick',act:'発射'},{pad:'stick',act:'発射'}],{note:'スマホは横向きで。スティックを倒した方向に戦車が進みます'});
 Arcade.loop(dt=>{if(state!=='paused'){update(dt);postUpdate(dt)}draw()});
 </script>
 </body>

@@ -121,6 +121,7 @@ kbd{display:inline-block;min-width:2.1cqw;padding:0 .5cqw;border-radius:.5cqw;ba
   </div>
 </div>
 </div>
+<script src="touch.js"></script>
 <script>
 'use strict';
 // ---------- input ----------
@@ -182,7 +183,7 @@ function onPress(p,a){
   if((d[0]===last[0]&&d[1]===last[1])||(d[0]===-last[0]&&d[1]===-last[1]))return;
   if(pl.q.length<3)pl.q.push(d);
 }
-function updateReady(){for(let p=0;p<2;p++){const ids=state==='end'?null:document.getElementById('rdy'+p);if(ids){ids.classList.toggle('on',ready[p]);ids.textContent=ready[p]?'準備OK ✓':(p?'Enter':'F')+' を押して準備OK'}}}
+function updateReady(){for(let p=0;p<2;p++){const ids=state==='end'?null:document.getElementById('rdy'+p);if(ids){ids.classList.toggle('on',ready[p]);ids.textContent=ready[p]?'準備OK ✓':TouchPad.isTouch?'ボタンを押して準備OK':(p?'Enter':'F')+' を押して準備OK'}}}
 
 function startMatch(){
   ready[0]=ready[1]=false;updateReady();
@@ -350,6 +351,9 @@ document.getElementById('againBtn').onclick=()=>{unlockAudio();startMatch()};
 document.getElementById('startBtn').onclick=()=>{unlockAudio();startMatch()};
 document.querySelectorAll('#segWin button').forEach(b=>b.onclick=()=>{winTarget=+b.dataset.v;document.querySelectorAll('#segWin button').forEach(x=>x.setAttribute('aria-pressed',x===b));renderPips()});
 renderPips();P.forEach(p=>p.alive=false);
+if(TouchPad.init({controls:[{pad:'dpad',act:'ブースト'},{pad:'dpad',act:'ブースト'}],pause:togglePause,unlock:unlockAudio,
+  down(p,a){const c=KEYS[p][a][0];if(held.has(c))return;held.add(c);unlockAudio();onPress(p,a)},
+  up(p,a){held.delete(KEYS[p][a][0])}}))updateReady();
 
 let last=performance.now();
 function loop(now){const dt=Math.min(.05,(now-last)/1000);last=now;if(state!=='paused')update(dt);draw(now);requestAnimationFrame(loop)}
