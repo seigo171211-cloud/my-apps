@@ -1,0 +1,390 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>はやおしパーティー</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=M+PLUS+Rounded+1c:wght@500;800&display=swap">
+<link rel="stylesheet" href="arcade.css">
+<style>
+:root{--p1:#3db8ff;--p2:#ff5fa2;--accent:#ffd23f;--glow:#c08cff;--panel:rgba(30,16,52,.88)}
+body{background:radial-gradient(1200px 600px at 50% -10%,#3a1d63 0%,#0e0618 62%)}
+.ov{background:rgba(18,8,34,.84)}
+.glist{display:grid;grid-template-columns:repeat(5,1fr);gap:1cqw;width:min(100%,86cqw)}
+.g{background:var(--panel);border:1px solid var(--line);border-radius:1.2cqw;padding:1.1cqw .8cqw;font-size:1.2cqw;line-height:1.5}
+.g .ic{font-size:3cqw;display:block}
+.g b{display:block;font-size:1.45cqw;color:var(--fg)}
+.g span{color:var(--muted)}
+.g.done{opacity:.45}.g.now{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent)}
+.introNo{font-size:1.5cqw;color:var(--accent);font-weight:800;letter-spacing:.1em;margin:0}
+.introIc{font-size:7cqw;line-height:1;margin:0}
+.desc{font-size:1.75cqw;line-height:1.7;max-width:70cqw;margin:0}
+.keys{display:flex;gap:2cqw;font-size:1.35cqw}
+.keys>div{background:var(--panel);border:1px solid var(--line);border-radius:1cqw;padding:.8cqw 1.4cqw;min-width:28cqw}
+.keys .p1 b{color:var(--p1)}.keys .p2 b{color:var(--p2)}
+.board{display:flex;gap:4cqw;align-items:flex-end}
+.bcol{display:flex;flex-direction:column;align-items:center;gap:.6cqw;font-weight:800}
+.bcol .num{font-family:"Dela Gothic One",sans-serif;font-size:6cqw;line-height:1}
+.bcol.p1{color:var(--p1)}.bcol.p2{color:var(--p2)}
+.hist{display:flex;gap:.6cqw;flex-wrap:wrap;justify-content:center;max-width:70cqw}
+.hist span{font-size:1.2cqw;padding:.3cqw .9cqw;border-radius:999px;border:1px solid var(--line)}
+.hist .w0{border-color:var(--p1);color:var(--p1)}.hist .w1{border-color:var(--p2);color:var(--p2)}
+.topscore{position:absolute;top:1cqw;left:50%;transform:translateX(-50%);display:flex;gap:1.4cqw;align-items:center;font-family:"Dela Gothic One",sans-serif;font-size:2.4cqw;pointer-events:none}
+.topscore .a{color:var(--p1)}.topscore .b{color:var(--p2)}.topscore small{font-family:"M PLUS Rounded 1c";font-weight:800;font-size:1.1cqw;color:var(--muted)}
+</style>
+</head>
+<body>
+<header class="bar">
+  <a class="back" href="/">← アプリ一覧</a>
+  <h1>はやおしパーティー</h1>
+  <div class="tools">
+    <button class="chip" id="muteBtn">🔊 音 ON (M)</button>
+    <button class="chip" id="pauseBtn">⏸ 一時停止 (Esc)</button>
+  </div>
+</header>
+<div class="wrap">
+<div class="frame">
+  <canvas id="cv" width="1280" height="720"></canvas>
+  <div class="topscore" id="topscore" hidden><span class="a" id="ts0">0</span><small id="tsLbl">GAME 1/5</small><span class="b" id="ts1">0</span></div>
+
+  <div class="ov" id="ovTitle">
+    <h2 class="title">HAYAOSHI PARTY</h2>
+    <p class="sub">反射神経・連打・集中力！ 5つのミニゲームで勝負。勝った数が多いほうが優勝！</p>
+    <div class="glist" id="glist"></div>
+    <div class="keys">
+      <div class="p1"><b>PLAYER 1</b>　方向 <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd>　ボタン <kbd>F</kbd><div class="rdy" id="rdy0"></div></div>
+      <div class="p2"><b>PLAYER 2</b>　方向 <kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd>　ボタン <kbd>Enter</kbd><div class="rdy" id="rdy1"></div></div>
+    </div>
+    <p class="touchnote">※ キーボードのあるPCで遊んでください</p>
+    <button class="btn" id="startBtn">スタート</button>
+  </div>
+
+  <div class="ov" id="ovIntro" hidden>
+    <p class="introNo" id="inNo">GAME 1 / 5</p>
+    <p class="introIc" id="inIc">🤠</p>
+    <p class="big" id="inName"></p>
+    <p class="desc" id="inDesc"></p>
+    <div class="keys" id="inKeys"></div>
+    <div class="ctrls"><div class="rdy" id="irdy0"></div><div class="rdy" id="irdy1"></div></div>
+  </div>
+
+  <div class="ov" id="ovBoard" hidden>
+    <p class="sub" id="bdLbl">途中経過</p>
+    <div class="board">
+      <div class="bcol p1"><span>PLAYER 1</span><span class="num" id="bd0">0</span></div>
+      <div class="bcol p2"><span>PLAYER 2</span><span class="num" id="bd1">0</span></div>
+    </div>
+    <div class="hist" id="bdHist"></div>
+    <p class="hint" id="bdHint">どちらかのボタンで次へ</p>
+  </div>
+
+  <div class="ov" id="ovPause" hidden>
+    <p class="big">PAUSE</p>
+    <div class="row"><button class="btn" id="resumeBtn">つづける</button><button class="btn ghost" id="quitBtn">タイトルへ</button></div>
+  </div>
+
+  <div class="ov" id="ovEnd" hidden>
+    <p class="sub">🏆 CHAMPION 🏆</p>
+    <p class="big" id="endTitle"></p>
+    <p class="sub" id="endScore"></p>
+    <div class="hist" id="endHist"></div>
+    <div class="ctrls"><div class="rdy" id="erdy0"></div><div class="rdy" id="erdy1"></div></div>
+    <div class="row"><button class="btn" id="againBtn">もう一度</button><button class="btn ghost" id="titleBtn">タイトルへ</button></div>
+  </div>
+</div>
+</div>
+<script src="arcade.js"></script>
+<script>
+const {tone,noise,show,hide,$}=Arcade;
+const W=1280,H=720,COL=['#3db8ff','#ff5fa2'];
+const cv=$('cv'),ctx=cv.getContext('2d');
+let state='title',prevState='title',time=0,shake=0,parts=[];
+let order=[],gi=0,score=[0,0],hist=[],cur=null,sudden=false;
+let phase='',pt=0,banner=null; // banner: {w,text,t}
+
+// ---------- drawing helpers ----------
+function blob(x,y,r,col,o={}){
+  const {mood='normal',look=0,squash=0,tilt=0}=o;
+  ctx.save();ctx.translate(x,y);ctx.rotate(tilt);
+  ctx.fillStyle='rgba(0,0,0,.25)';ctx.beginPath();ctx.ellipse(0,r*.95,r*.9,r*.22,0,0,7);ctx.fill();
+  ctx.scale(1+squash,1-squash);
+  const g=ctx.createRadialGradient(-r*.35,-r*.45,r*.1,0,0,r*1.1);g.addColorStop(0,'#ffffff');g.addColorStop(.18,col);g.addColorStop(1,shade(col,-.35));
+  ctx.fillStyle=g;ctx.beginPath();ctx.moveTo(-r,r*.6);ctx.bezierCurveTo(-r*1.05,-r*1.2,r*1.05,-r*1.2,r,r*.6);ctx.quadraticCurveTo(0,r*1.05,-r,r*.6);ctx.fill();
+  const ex=r*.32,ey=-r*.15;
+  for(const s of[-1,1]){
+    ctx.fillStyle='#fff';ctx.beginPath();ctx.ellipse(s*ex+look*r*.08,ey,r*.2,mood==='shock'?r*.27:r*.24,0,0,7);ctx.fill();
+    if(mood==='happy'){ctx.strokeStyle='#1a1030';ctx.lineWidth=r*.07;ctx.beginPath();ctx.arc(s*ex+look*r*.08,ey+r*.05,r*.12,Math.PI*1.1,Math.PI*1.9);ctx.stroke()}
+    else{ctx.fillStyle='#1a1030';ctx.beginPath();ctx.arc(s*ex+look*r*.16,ey+(mood==='sad'?r*.06:0),r*.1,0,7);ctx.fill();ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(s*ex+look*r*.16-r*.03,ey-r*.04,r*.035,0,7);ctx.fill()}
+  }
+  ctx.strokeStyle='#1a1030';ctx.fillStyle='#1a1030';ctx.lineWidth=r*.07;ctx.lineCap='round';ctx.beginPath();
+  const my=r*.28;
+  if(mood==='happy'){ctx.arc(look*r*.08,my-r*.06,r*.18,.15*Math.PI,.85*Math.PI);ctx.stroke()}
+  else if(mood==='sad'){ctx.arc(look*r*.08,my+r*.12,r*.14,1.2*Math.PI,1.8*Math.PI);ctx.stroke()}
+  else if(mood==='shock'){ctx.ellipse(look*r*.08,my,r*.09,r*.13,0,0,7);ctx.fill()}
+  else if(mood==='effort'){ctx.moveTo(-r*.15+look*r*.08,my);ctx.lineTo(r*.15+look*r*.08,my);ctx.stroke()}
+  else{ctx.arc(look*r*.08,my-r*.02,r*.09,.2*Math.PI,.8*Math.PI);ctx.stroke()}
+  ctx.fillStyle='rgba(255,120,150,.35)';for(const s of[-1,1]){ctx.beginPath();ctx.ellipse(s*r*.55,r*.12,r*.12,r*.07,0,0,7);ctx.fill()}
+  ctx.restore();
+}
+function shade(hex,k){const n=parseInt(hex.slice(1),16);let r=n>>16,g=n>>8&255,b=n&255;const f=k<0?0:255,t=Math.abs(k);r=Math.round((f-r)*t+r);g=Math.round((f-g)*t+g);b=Math.round((f-b)*t+b);return`rgb(${r},${g},${b})`}
+function bgParty(c1,c2){
+  const g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,c1);g.addColorStop(1,c2);ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+  ctx.save();ctx.globalAlpha=.06;ctx.fillStyle='#fff';
+  for(let i=-2;i<20;i++){ctx.beginPath();const x=i*90+(time*20%90);ctx.moveTo(x,0);ctx.lineTo(x+45,0);ctx.lineTo(x-200,H);ctx.lineTo(x-245,H);ctx.fill()}
+  ctx.restore();
+}
+function text(s,x,y,size,col='#fff',font='Dela Gothic One',w=400){ctx.font=`${w} ${size}px "${font}"`;ctx.fillStyle=col;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(s,x,y)}
+function outlined(s,x,y,size,col){ctx.font=`400 ${size}px "Dela Gothic One"`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.lineJoin='round';ctx.lineWidth=size*.14;ctx.strokeStyle='#1a1030';ctx.strokeText(s,x,y);ctx.fillStyle=col;ctx.fillText(s,x,y)}
+function confetti(x,y,n=60,cols=['#ffd23f','#3db8ff','#ff5fa2','#7cff6b','#fff']){for(let k=0;k<n;k++){const a=-Math.PI/2+(Math.random()-.5)*2.4,s=250+Math.random()*450;parts.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:1.4+Math.random(),max:2.4,c:cols[k%cols.length],r:4+Math.random()*5,rot:Math.random()*7,vr:(Math.random()-.5)*14,conf:true})}}
+const DIRS=['up','right','down','left'];
+const ARROW={up:'↑',right:'→',down:'↓',left:'←'};
+const KEYNAME=[{up:'W',right:'D',down:'S',left:'A',act:'F'},{up:'↑',right:'→',down:'↓',left:'←',act:'Enter'}];
+
+// ---------- minigames ----------
+// Each: init(), update(dt), draw(), press(p,a). Call win(w) with 0/1 (or -1 for draw) when decided.
+const GAMES={
+quick:{name:'早撃ち',ic:'🤠',col:['#3a1d10','#8a3b16'],
+  desc:'「撃て！」が出たら、先にボタンを押したほうが勝ち。<br>フライング（合図の前に押す）は負け！ <b>2本先取</b>',
+  keys:'ボタンだけ',
+  init(){this.wins=[0,0];this.next()},
+  next(){this.ph='wait';this.t=0;this.go=1.6+Math.random()*3.2;this.fake=Math.random()<.5?.5+Math.random()*(this.go-.9):-1;this.fakeShown=false;this.rt=null;this.who=-1;this.why=''},
+  update(dt){this.t+=dt;
+    if(this.ph==='wait'){if(this.fake>0&&!this.fakeShown&&this.t>this.fake){this.fakeShown=true;tone(300,.08,'square',.06)}if(this.t>=this.go){this.ph='fire';this.t0=this.t;tone(1000,.12,'square',.14);noise(.1,.2,4000)}}
+    else if(this.ph==='res'&&this.t>this.until){if(this.wins[0]>=this.need||this.wins[1]>=this.need)win(this.wins[0]>this.wins[1]?0:1);else this.next()}
+  },
+  need:2,
+  press(p,a){if(a!=='act')return;
+    if(this.ph==='wait'){this.who=1-p;this.why=`P${p+1} フライング!`;this.end();tone(150,.3,'sawtooth',.12,.5)}
+    else if(this.ph==='fire'){this.who=p;this.rt=Math.round((this.t-this.t0)*1000);this.why=`${this.rt} ミリ秒`;this.end();noise(.35,.4,2500);shake=14}
+  },
+  end(){this.wins[this.who]++;this.ph='res';this.until=this.t+1.8},
+  draw(){
+    bgParty('#2b1407','#7a3412');
+    ctx.fillStyle='#d79a4b';ctx.fillRect(0,500,W,220);ctx.fillStyle='#c4863a';ctx.fillRect(0,500,W,8);
+    ctx.fillStyle='rgba(255,200,120,.9)';ctx.beginPath();ctx.arc(W/2,500,140,Math.PI,0);ctx.fill();
+    const fire=this.ph==='fire',res=this.ph==='res';
+    for(const p of[0,1]){
+      const x=p?W-300:300,lost=res&&this.who!==p,won=res&&this.who===p;
+      blob(x,440,90,COL[p],{mood:won?'happy':lost?'sad':fire?'shock':'effort',look:p?-1:1,tilt:lost?(p?.5:-.5):0});
+      ctx.save();ctx.translate(x+(p?-80:80),450);ctx.scale(p?-1:1,1);ctx.fillStyle='#2a2a2a';ctx.fillRect(0,-10,60,16);ctx.fillRect(0,-10,16,36);
+      if(won&&this.t<this.until-1.4){ctx.fillStyle='#ffe066';ctx.beginPath();ctx.arc(70,-2,18,0,7);ctx.fill()}ctx.restore();
+      for(let k=0;k<this.need;k++){ctx.fillStyle=k<this.wins[p]?COL[p]:'rgba(255,255,255,.2)';ctx.beginPath();ctx.arc(x-20+k*40,620,12,0,7);ctx.fill()}
+    }
+    if(this.ph==='wait'){
+      if(this.fakeShown&&this.t-this.fake<.5)outlined('撃…たない！',W/2,230,90,'#ffd23f');
+      else text('…まだ…',W/2,230,60,'rgba(255,255,255,.7)');
+    }
+    if(fire)outlined('撃て！',W/2,230,170,'#ff3b3b');
+    if(res){outlined(this.who>=0?`P${this.who+1} の勝ち!`:'',W/2,200,90,COL[this.who]);text(this.why,W/2,300,40,'#fff','M PLUS Rounded 1c',800)}
+  }},
+tug:{name:'つなひき連打',ic:'💪',col:['#0f3b2a','#1f7a4d'],
+  desc:'ボタンを<b>連打</b>してロープを引っぱれ！<br>旗を自分の陣地まで引き込んだら勝ち。15秒で決着がつかなければ引いていたほうの勝ち。',
+  keys:'ボタン連打',
+  init(){this.pos=0;this.t=15;this.cnt=[0,0];this.pull=[0,0];this.done=false},
+  update(dt){if(this.done)return;this.t-=dt;this.pull=this.pull.map(v=>Math.max(0,v-dt*5));
+    if(this.pos<=-1)this.fin(0);else if(this.pos>=1)this.fin(1);else if(this.t<=0)this.fin(Math.abs(this.pos)<.005?-1:this.pos<0?0:1)},
+  fin(w){this.done=true;this.result=w;win(w)},
+  press(p,a){if(a!=='act'||this.done)return;this.cnt[p]++;this.pos+=p?.028:-.028;this.pull[p]=1;tone(p?520:440,.04,'square',.05,1.3)},
+  draw(){
+    bgParty('#0d2f22','#1d6e47');
+    ctx.fillStyle='#5aa35a';ctx.fillRect(0,470,W,250);ctx.fillStyle='#4b8f4b';for(let i=0;i<40;i++)ctx.fillRect(i*34,470,3,250);
+    ctx.fillStyle='rgba(255,255,255,.7)';ctx.fillRect(W/2-3,470,6,250);
+    const off=this.pos*300;
+    ctx.fillStyle=COL[0]+'55';ctx.fillRect(W/2-300-4,470,8,250);ctx.fillStyle=COL[1]+'55';ctx.fillRect(W/2+300-4,470,8,250);
+    ctx.strokeStyle='#c99a5b';ctx.lineWidth=12;ctx.beginPath();ctx.moveTo(120+off,430);ctx.lineTo(W-120+off,430);ctx.stroke();
+    ctx.strokeStyle='#9c7440';ctx.lineWidth=2;for(let x=130;x<W-120;x+=18){ctx.beginPath();ctx.moveTo(x+off,424);ctx.lineTo(x+10+off,436);ctx.stroke()}
+    ctx.fillStyle='#ff3b3b';ctx.beginPath();ctx.moveTo(W/2+off,430);ctx.lineTo(W/2+off-18,480);ctx.lineTo(W/2+off+18,480);ctx.fill();
+    for(const p of[0,1]){const x=(p?W-150:150)+off,lean=(p?1:-1)*(.15+this.pull[p]*.25);
+      const m=this.done?(this.result===p?'happy':'sad'):this.pull[p]>.5?'effort':'normal';
+      blob(x,430,80,COL[p],{mood:m,look:p?-1:1,tilt:lean,squash:this.pull[p]*.06});
+      text(this.cnt[p]+' 回',p?W-150:150,600,34,'#fff','M PLUS Rounded 1c',800);
+    }
+    text(Math.max(0,this.t).toFixed(1),W/2,110,70,this.t<4?'#ff6b6b':'#fff');
+    if(!this.done&&this.t>14.2)outlined('連打！',W/2,250,120,'#ffd23f');
+  }},
+color:{name:'いろあて',ic:'🎨',col:['#1a1446','#3a2a8a'],
+  desc:'表示される<b>文字の「色」</b>の方向キーを押せ！（文字の意味じゃないよ）<br>まちがえるとその問題はおやすみ。<b>5問先取</b>',
+  keys:'方向キー',
+  C:[{n:'あか',c:'#ff4757',d:'up'},{n:'あお',c:'#3d8bff',d:'right'},{n:'きいろ',c:'#ffd23f',d:'down'},{n:'みどり',c:'#2ed573',d:'left'}],
+  init(){this.pts=[0,0];this.q=null;this.gap=1;this.lock=[false,false];this.flashW=-1;this.ft=0;this.done=false},
+  newQ(){const w=Math.floor(Math.random()*4);let k=w;if(Math.random()<.8)while(k===w)k=Math.floor(Math.random()*4);this.q={w,k,size:110+Math.random()*40};this.lock=[false,false];tone(700,.06,'sine',.08)},
+  update(dt){if(this.done)return;this.ft-=dt;if(!this.q){this.gap-=dt;if(this.gap<=0)this.newQ()}},
+  press(p,a){if(a==='act'||!this.q||this.lock[p]||this.done)return;
+    if(this.C[this.q.k].d===a){this.pts[p]++;this.flashW=p;this.ft=.7;this.q=null;this.gap=.7+Math.random()*.8;tone(880,.08,'square',.1);tone(1320,.12,'square',.1,1,.07);
+      if(this.pts[p]>=5){this.done=true;win(p)}}
+    else{this.lock[p]=true;tone(160,.2,'sawtooth',.1);shake=6;if(this.lock[0]&&this.lock[1]){this.q=null;this.gap=1;this.flashW=-1;this.ft=.7}}
+  },
+  draw(){
+    bgParty('#141038','#33267a');
+    for(const p of[0,1]){const x=p?W-170:170;
+      blob(x,380,70,COL[p],{mood:this.lock[p]?'sad':this.flashW===p&&this.ft>0?'happy':'normal',look:p?-1:1});
+      for(let k=0;k<5;k++){ctx.fillStyle=k<this.pts[p]?COL[p]:'rgba(255,255,255,.18)';ctx.beginPath();ctx.arc(x-60+k*30,480,10,0,7);ctx.fill()}
+      if(this.lock[p])text('おやすみ…',x,280,26,'#ffb3b3','M PLUS Rounded 1c',800);
+      // legend
+      const lx=x,ly=600;const kn=KEYNAME[p];
+      const pos={up:[0,-38],right:[52,0],down:[0,38],left:[-52,0]};
+      for(const c of this.C){const [dx,dy]=pos[c.d];ctx.fillStyle=c.c;ctx.beginPath();ctx.roundRect(lx+dx-22,ly+dy-17,44,34,8);ctx.fill();text(kn[c.d],lx+dx,ly+dy+1,18,'#1a1030','M PLUS Rounded 1c',800)}
+    }
+    ctx.fillStyle='rgba(0,0,0,.25)';ctx.beginPath();ctx.roundRect(W/2-300,180,600,300,30);ctx.fill();
+    if(this.q){const q=this.q;outlined(this.C[q.w].n,W/2,330,q.size,this.C[q.k].c)}
+    else if(this.ft>0&&this.flashW>=0)outlined(`P${this.flashW+1} 正解!`,W/2,330,80,COL[this.flashW]);
+    else if(this.ft>0)text('ふたりともハズレ!',W/2,330,50,'#fff','M PLUS Rounded 1c',800);
+    else text('…',W/2,330,80,'rgba(255,255,255,.4)');
+    text('文字の「色」を答えよう',W/2,130,30,'rgba(255,255,255,.75)','M PLUS Rounded 1c',800);
+  }},
+cmd:{name:'コマンド入力',ic:'🕹️',col:['#08263a','#0f5a7a'],
+  desc:'表示された矢印を<b>順番どおり</b>に入力しよう！<br>まちがえると最初からやり直し。<b>2セット先取</b>',
+  keys:'方向キー',
+  init(){this.sets=[0,0];this.set=0;this.newSeq()},
+  newSeq(){const L=[5,7,9,11][Math.min(this.set,3)];this.seq=Array.from({length:L},()=>DIRS[Math.floor(Math.random()*4)]);this.prog=[0,0];this.err=[0,0];this.ph='go';this.t=0},
+  update(dt){this.t+=dt;this.err=this.err.map(v=>Math.max(0,v-dt));if(this.ph==='res'&&this.t>1.5){if(this.sets[0]>=2||this.sets[1]>=2){this.ph='done';win(this.sets[0]>=2?0:1)}else{this.set++;this.newSeq()}}},
+  press(p,a){if(a==='act'||this.ph!=='go'||this.err[p]>0)return;
+    if(this.seq[this.prog[p]]===a){this.prog[p]++;tone(500+this.prog[p]*60,.05,'square',.07);
+      if(this.prog[p]===this.seq.length){this.sets[p]++;this.ph='res';this.sw=p;this.t=0;Arcade.jingle()}}
+    else{this.prog[p]=0;this.err[p]=.45;tone(140,.2,'sawtooth',.1);shake=5}
+  },
+  draw(){
+    bgParty('#071d2d','#0d4a66');
+    text(`SET ${this.set+1}`,W/2,90,36,'#9fe3ff');
+    for(const p of[0,1]){
+      const y=p?470:250,n=this.seq.length,sz=Math.min(86,980/n),x0=W/2-(n*sz)/2+sz/2+60;
+      ctx.save();if(this.err[p]>0)ctx.translate(Math.sin(time*80)*8,0);
+      blob(110,y,56,COL[p],{mood:this.err[p]>0?'shock':this.ph==='res'?(this.sw===p?'happy':'sad'):'effort',look:1});
+      for(let k=0;k<this.sets[p];k++){text('★',70+k*40,y+80,30,'#ffd23f')}
+      this.seq.forEach((d,i)=>{const x=x0+i*sz,doneK=i<this.prog[p];
+        ctx.fillStyle=doneK?COL[p]:this.err[p]>0?'rgba(255,80,80,.25)':'rgba(255,255,255,.1)';ctx.beginPath();ctx.roundRect(x-sz*.42,y-sz*.42,sz*.84,sz*.84,12);ctx.fill();
+        if(i===this.prog[p]&&this.ph==='go'){ctx.strokeStyle='#fff';ctx.lineWidth=3;ctx.stroke()}
+        text(ARROW[d],x,y+2,sz*.55,doneK?'#0b1a26':'#fff','M PLUS Rounded 1c',800)});
+      ctx.restore();
+    }
+    if(this.ph==='res')outlined(`P${this.sw+1} クリア!`,W/2,360,80,COL[this.sw]);
+  }},
+stop:{name:'ぴったりストップ',ic:'⏱️',col:['#2e2205','#6b4e0a'],
+  desc:'タイマーがスタートしたら、<b>ちょうど 5.00 秒</b>だと思ったところでボタン！<br>途中でタイマーは見えなくなるよ。より近いほうが勝ち。',
+  keys:'ボタン',
+  init(){this.t=-1.2;this.st=[null,null];this.ph='run';this.T=5;this.sent=false},
+  update(dt){if(this.ph==='run'){const before=this.t;this.t+=dt;if(before<0&&this.t>=0)tone(880,.15,'square',.1);
+      if((this.st[0]!==null&&this.st[1]!==null)||this.t>this.T+4){this.ph='reveal';this.rt=0;
+        const d=this.st.map(v=>v===null?99:Math.abs(v-this.T));this.d=d;this.w=d[0]===d[1]?-1:d[0]<d[1]?0:1}}
+    else if(this.ph==='reveal'){this.rt+=dt;if(this.rt>2.8&&!this.sent){this.sent=true;win(this.w)}}},
+  press(p,a){if(a!=='act'||this.ph!=='run'||this.t<0||this.st[p]!==null)return;this.st[p]=this.t;tone(p?660:520,.1,'triangle',.12)},
+  draw(){
+    bgParty('#2a1f05','#664a0a');
+    const shown=this.t<1.5;
+    ctx.fillStyle='rgba(0,0,0,.35)';ctx.beginPath();ctx.roundRect(W/2-260,120,520,190,30);ctx.fill();
+    if(this.t<0)text('よーい…',W/2,215,80,'#fff');
+    else if(this.ph==='reveal')text(this.t.toFixed(2),W/2,215,120,'#ffd23f');
+    else if(shown)text(this.t.toFixed(2),W/2,215,120,'#fff');
+    else text('?.??',W/2,215,120,'rgba(255,255,255,'+(.4+.2*Math.sin(time*6))+')');
+    text('目標  5.00 秒',W/2,360,34,'#ffe9a8','M PLUS Rounded 1c',800);
+    for(const p of[0,1]){const x=p?W-260:260;
+      const mood=this.ph==='reveal'&&this.rt>.8?(this.w===p||this.w===-1?'happy':'sad'):this.st[p]!==null?'normal':'effort';
+      blob(x,500,72,COL[p],{mood,look:p?-1:1});
+      let s=this.st[p]===null?(this.t>=0?'まだ…':''):'ストップ!';
+      if(this.ph==='reveal'&&this.rt>.8)s=this.st[p]===null?'時間切れ':this.st[p].toFixed(2)+' 秒';
+      text(s,x,620,36,'#fff','M PLUS Rounded 1c',800);
+      if(this.ph==='reveal'&&this.rt>.8&&this.st[p]!==null)text('ずれ '+this.d[p].toFixed(2),x,664,22,'rgba(255,255,255,.75)','M PLUS Rounded 1c',800);
+    }
+  }},
+};
+const KEYS_ALL=Object.keys(GAMES);
+
+// ---------- flow ----------
+function renderList(){$('glist').innerHTML=KEYS_ALL.map(k=>`<div class="g"><span class="ic">${GAMES[k].ic}</span><b>${GAMES[k].name}</b><span>${GAMES[k].keys}</span></div>`).join('')}
+function keyHtml(g){const a=g.keys.includes('方向');return`<div class="p1"><b>PLAYER 1</b>　${a?'<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd>':'<kbd>F</kbd> / <kbd>Space</kbd>'}</div><div class="p2"><b>PLAYER 2</b>　${a?'<kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd>':'<kbd>Enter</kbd> / <kbd>/</kbd>'}</div>`}
+function startParty(){score=[0,0];hist=[];sudden=false;order=KEYS_ALL.slice().sort(()=>Math.random()-.5);gi=0;hide('ovTitle');hide('ovEnd');$('topscore').hidden=false;paintTop();intro()}
+function paintTop(){$('ts0').textContent=score[0];$('ts1').textContent=score[1];$('tsLbl').textContent=sudden?'サドンデス':`GAME ${Math.min(gi+1,order.length)}/${order.length}`}
+function intro(){
+  const g=GAMES[sudden?'quick':order[gi]];
+  $('inNo').textContent=sudden?'SUDDEN DEATH':`GAME ${gi+1} / ${order.length}`;
+  $('inIc').textContent=g.ic;$('inName').textContent=g.name;
+  $('inDesc').innerHTML=sudden?'同点！ 早撃ち1本勝負で決着をつけよう。フライングは負け！':g.desc;
+  $('inKeys').innerHTML=keyHtml(g);
+  readyIn.reset();show('ovIntro');state='intro';paintTop();
+  cur=g;cur.init();if(sudden)cur.need=1;else GAMES.quick.need=2;
+}
+function begin(){hide('ovIntro');state='count';pt=3;lastBeep=4}
+let lastBeep=4;
+function win(w){
+  if(state!=='game')return;
+  state='banner';banner={w,t:0};
+  if(w>=0){score[w]++;confetti(w?W-260:260,400,70)}
+  hist.push({n:cur.name,w});paintTop();
+  if(w>=0)[523,659,784].forEach((f,i)=>tone(f,.16,'square',.1,1,.15+i*.1));else tone(300,.3,'triangle',.1);
+}
+function afterBanner(){
+  if(sudden){finish();return}
+  gi++;
+  if(gi>=order.length){if(score[0]===score[1]){sudden=true;intro()}else finish();return}
+  board();
+}
+function board(){
+  $('bd0').textContent=score[0];$('bd1').textContent=score[1];
+  $('bdHist').innerHTML=hist.map(h=>`<span class="w${h.w}">${h.n}${h.w>=0?' → P'+(h.w+1):' → 引き分け'}</span>`).join('');
+  $('bdLbl').textContent=`途中経過（残り ${order.length-gi} ゲーム）`;
+  show('ovBoard');state='board';
+}
+function finish(){
+  state='end';$('topscore').hidden=true;
+  const w=score[0]>score[1]?0:1;
+  const t=$('endTitle');t.textContent=`PLAYER ${w+1}`;t.style.color=COL[w];t.style.textShadow=`0 0 3cqw ${COL[w]}`;
+  $('endScore').textContent=`${score[0]} - ${score[1]}`;
+  $('endHist').innerHTML=hist.map(h=>`<span class="w${h.w}">${h.n}${h.w>=0?' → P'+(h.w+1):' → 引き分け'}</span>`).join('');
+  readyEnd.reset();show('ovEnd');Arcade.fanfare();confetti(W/2,700,160);
+}
+const ready=Arcade.readyCheck(['rdy0','rdy1'],startParty);
+const readyIn=Arcade.readyCheck(['irdy0','irdy1'],begin);
+const readyEnd=Arcade.readyCheck(['erdy0','erdy1'],startParty);
+Arcade.on({
+  press(p,a){
+    if(state==='title'&&a==='act')ready.press(p);
+    else if(state==='intro'&&a==='act')readyIn.press(p);
+    else if(state==='end'&&a==='act')readyEnd.press(p);
+    else if(state==='board'&&a==='act'){hide('ovBoard');intro()}
+    else if(state==='game')cur.press(p,a);
+  },
+  pause:togglePause,
+  blur(){if(state==='game'||state==='count')togglePause()}
+});
+
+function update(dt){
+  time+=dt;
+  for(const q of parts){q.life-=dt;q.x+=q.vx*dt;q.y+=q.vy*dt;q.vy+=900*dt;q.vx*=.99;q.rot+=q.vr*dt}
+  parts=parts.filter(q=>q.life>0&&q.y<H+40);
+  shake=Math.max(0,shake-dt*40);
+  if(state==='count'){pt-=dt;const n=Math.ceil(pt);if(n<lastBeep&&n>0){lastBeep=n;tone(520,.1,'square',.09)}if(pt<=0){state='game';tone(1040,.18,'square',.1)}}
+  else if(state==='game')cur.update(dt);
+  else if(state==='banner'){cur.update(dt);banner.t+=dt;if(banner.t>2.2)afterBanner()}
+}
+function draw(){
+  ctx.save();if(shake>0)ctx.translate((Math.random()-.5)*shake,(Math.random()-.5)*shake);
+  if(cur&&['count','game','banner','paused'].includes(state==='paused'?prevState:state))cur.draw();
+  else{bgParty('#2a1450','#120822');
+    for(const p of[0,1])blob(p?W-200:200,560,90,COL[p],{mood:'happy',look:p?-1:1,squash:Math.sin(time*4+p*2)*.05})}
+  ctx.restore();
+  if(state==='count'){ctx.fillStyle='rgba(0,0,0,.45)';ctx.fillRect(0,0,W,H);const f=pt%1;outlined(Math.ceil(pt),W/2,H/2,160+f*50,'#ffd23f');text(cur.name,W/2,H/2+130,36,'#fff','M PLUS Rounded 1c',800)}
+  if(state==='banner'&&banner.t>.25){
+    const k=Math.min(1,(banner.t-.25)/.25);
+    ctx.fillStyle=`rgba(0,0,0,${.45*k})`;ctx.fillRect(0,H/2-110,W,220);
+    ctx.save();ctx.translate(W/2,H/2);ctx.scale(.7+.3*k,.7+.3*k);
+    if(banner.w>=0)outlined(`PLAYER ${banner.w+1} WIN!`,0,-10,110,COL[banner.w]);else outlined('引き分け!',0,-10,110,'#fff');
+    ctx.restore();
+    text(`${score[0]}  -  ${score[1]}`,W/2,H/2+75,30,'#fff','M PLUS Rounded 1c',800);
+  }
+  for(const q of parts){ctx.save();ctx.translate(q.x,q.y);ctx.rotate(q.rot);ctx.globalAlpha=Math.min(1,q.life);ctx.fillStyle=q.c;ctx.fillRect(-q.r,-q.r*.5,q.r*2,q.r);ctx.restore()}
+}
+function togglePause(){
+  if(state==='paused'){state=prevState;hide('ovPause');return}
+  if(['game','count','banner'].includes(state)){prevState=state;state='paused';show('ovPause')}
+}
+function toTitle(){state='title';cur=null;ready.reset();['ovPause','ovEnd','ovBoard','ovIntro'].forEach(hide);$('topscore').hidden=true;show('ovTitle')}
+$('pauseBtn').onclick=e=>{togglePause();e.target.blur()};
+$('resumeBtn').onclick=togglePause;$('quitBtn').onclick=toTitle;$('titleBtn').onclick=toTitle;
+$('againBtn').onclick=()=>{Arcade.unlock();startParty()};$('startBtn').onclick=()=>{Arcade.unlock();startParty()};
+renderList();
+Arcade.loop(dt=>{if(state!=='paused')update(dt);draw()});
+</script>
+</body>
+</html>

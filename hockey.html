@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>スマッシュホッケー</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=M+PLUS+Rounded+1c:wght@500;800&display=swap">
+<link rel="stylesheet" href="arcade.css">
+<style>
+:root{--p1:#2ee6ff;--p2:#ff4d6d;--accent:#c6ff3d;--glow:#5ad1ff}
+body{background:radial-gradient(1200px 600px at 50% -10%,#0f2b45 0%,#04070d 62%)}
+.score{position:absolute;top:1cqw;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:1.6cqw;font-family:"Dela Gothic One",sans-serif;font-size:4.2cqw;line-height:1;pointer-events:none}
+.score .s1{color:var(--p1);text-shadow:0 0 1.4cqw var(--p1)}
+.score .s2{color:var(--p2);text-shadow:0 0 1.4cqw var(--p2)}
+.score .colon{color:#ffffff55;font-size:3cqw}
+.target{position:absolute;top:5.6cqw;left:50%;transform:translateX(-50%);font-size:1.1cqw;color:var(--muted);font-weight:800;letter-spacing:.08em;pointer-events:none}
+</style>
+</head>
+<body>
+<header class="bar">
+  <a class="back" href="/">← アプリ一覧</a>
+  <h1>スマッシュホッケー</h1>
+  <div class="tools">
+    <button class="chip" id="muteBtn">🔊 音 ON (M)</button>
+    <button class="chip" id="pauseBtn">⏸ 一時停止 (Esc)</button>
+  </div>
+</header>
+<div class="wrap">
+<div class="frame">
+  <canvas id="cv" width="1280" height="720"></canvas>
+  <div class="score"><span class="s1" id="sc0">0</span><span class="colon">:</span><span class="s2" id="sc1">0</span></div>
+  <div class="target" id="targetLbl">7点先取</div>
+
+  <div class="ov" id="ovTitle">
+    <h2 class="title">SMASH HOCKEY</h2>
+    <p class="sub">マレットでパックを打って、相手のゴールに入れろ！<br>ダッシュで一気に詰めて強烈スマッシュ。</p>
+    <div class="ctrls">
+      <div class="ctrl p1"><h3>PLAYER 1（左）</h3>
+        移動 <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd><br>
+        ダッシュ <kbd>F</kbd> / <kbd>Space</kbd>
+        <div class="rdy" id="rdy0"></div></div>
+      <div class="ctrl p2"><h3>PLAYER 2（右）</h3>
+        移動 <kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd><br>
+        ダッシュ <kbd>Enter</kbd> / <kbd>/</kbd> / <kbd>0</kbd>
+        <div class="rdy" id="rdy1"></div></div>
+    </div>
+    <div class="row">先取点数
+      <div class="seg" id="segWin"><button data-v="5">5</button><button data-v="7" aria-pressed="true">7</button><button data-v="10">10</button></div>
+    </div>
+    <p class="hint">日本語入力はオフにしてね</p>
+    <p class="touchnote">※ キーボードのあるPCで遊んでください</p>
+    <button class="btn" id="startBtn">スタート</button>
+  </div>
+
+  <div class="ov" id="ovPause" hidden>
+    <p class="big">PAUSE</p>
+    <div class="row"><button class="btn" id="resumeBtn">つづける</button><button class="btn ghost" id="quitBtn">タイトルへ</button></div>
+    <p class="hint">Esc でもどる</p>
+  </div>
+
+  <div class="ov" id="ovEnd" hidden>
+    <p class="sub">GAME SET</p>
+    <p class="big" id="endTitle">P1 WIN!</p>
+    <p class="sub" id="endScore"></p>
+    <div class="ctrls"><div class="rdy" id="erdy0"></div><div class="rdy" id="erdy1"></div></div>
+    <div class="row"><button class="btn" id="againBtn">もう一度</button><button class="btn ghost" id="titleBtn">タイトルへ</button></div>
+  </div>
+</div>
+</div>
+<script src="arcade.js"></script>
+<script>
+const {tone,noise,show,hide,$}=Arcade;
+const W=1280,H=720;
+const T={l:70,r:1210,t:70,b:680};           // table inner walls
+const GOAL={top:360-105,bot:360+105};
+const CX=(T.l+T.r)/2,CY=(T.t+T.b)/2;
+const MR=40,PR=24;                          // mallet / puck radius
+const COL=['#2ee6ff','#ff4d6d'];
+const cv=$('cv'),ctx=cv.getContext('2d');
+
+let state='title',prevState='title',winTarget=7,serveT=0,goalT=0,lastScorer=-1,shake=0,flash=0,flashCol='#fff',time=0;
+const M=[0,1].map(i=>({i,x:0,y:0,vx:0,vy:0,dash:0,cool:0,score:0,hitT:0}));
+const puck={x:CX,y:CY,vx:0,vy:0,spin:0,trail:[]};
+let parts=[];
+
+// static table art
+const tbl=document.createElement('canvas');tbl.width=W;tbl.height=H;
+(function(){
+  const g=tbl.getContext('2d');
+  g.fillStyle='#04070d';g.fillRect(0,0,W,H);
+  const s=g.createLinearGradient(0,T.t,0,T.b);s.addColorStop(0,'#0b1d2e');s.addColorStop(.5,'#0e2638');s.addColorStop(1,'#0b1d2e');
+  g.fillStyle=s;g.fillRect(T.l,T.t,T.r-T.l,T.b-T.t);
+  g.fillStyle='rgba(140,210,255,.10)';
+  for(let x=T.l+20;x<T.r;x+=28)for(let y=T.t+20;y<T.b;y+=28){g.beginPath();g.arc(x,y,1.6,0,7);g.fill()}
+  const line=(c,w,f)=>{g.strokeStyle=c;g.lineWidth=w;g.shadowColor=c;g.shadowBlur=18;g.beginPath();f();g.stroke();g.shadowBlur=0};
+  line('rgba(255,255,255,.35)',3,()=>{g.moveTo(CX,T.t);g.lineTo(CX,T.b)});
+  line('rgba(255,255,255,.35)',3,()=>g.arc(CX,CY,95,0,7));
+  g.fillStyle='rgba(255,255,255,.4)';g.beginPath();g.arc(CX,CY,7,0,7);g.fill();
+  line(COL[0]+'aa',3,()=>g.arc(T.l,CY,150,-Math.PI/2,Math.PI/2));
+  line(COL[1]+'aa',3,()=>g.arc(T.r,CY,150,Math.PI/2,Math.PI*1.5));
+  [[T.l+200,COL[0]],[T.r-200,COL[1]]].forEach(([x,c])=>{g.fillStyle=c+'55';g.beginPath();g.arc(x,CY,6,0,7);g.fill()});
+  // rails
+  g.lineWidth=10;g.lineCap='round';g.shadowBlur=24;
+  const rail=(c,pts)=>{g.strokeStyle=c;g.shadowColor=c;g.beginPath();g.moveTo(...pts[0]);for(const p of pts.slice(1))g.lineTo(...p);g.stroke()};
+  rail('#9fe8ff',[[T.l,GOAL.top],[T.l,T.t],[T.r,T.t],[T.r,GOAL.top]]);
+  rail('#9fe8ff',[[T.l,GOAL.bot],[T.l,T.b],[T.r,T.b],[T.r,GOAL.bot]]);
+  g.shadowBlur=0;
+  // goal mouths
+  [[T.l-30,COL[0]],[T.r,COL[1]]].forEach(([x,c])=>{const gg=g.createLinearGradient(x,0,x+30,0);gg.addColorStop(0,c+(x<CX?'00':'66'));gg.addColorStop(1,c+(x<CX?'66':'00'));g.fillStyle=gg;g.fillRect(x,GOAL.top,30,GOAL.bot-GOAL.top)});
+  g.font='400 120px "Dela Gothic One"';
+})();
+
+function resetPositions(serveTo){
+  M[0].x=T.l+120;M[1].x=T.r-120;
+  for(const m of M){m.y=CY;m.vx=m.vy=0;m.dash=0;m.cool=0}
+  puck.x=serveTo===0?CX-180:serveTo===1?CX+180:CX;puck.y=CY;puck.vx=puck.vy=0;puck.trail=[];
+}
+function startMatch(){M.forEach(m=>m.score=0);paintScore();hide('ovTitle');hide('ovEnd');resetPositions(Math.random()<.5?0:1);state='serve';serveT=1.6}
+function paintScore(){$('sc0').textContent=M[0].score;$('sc1').textContent=M[1].score;$('targetLbl').textContent=winTarget+'点先取'}
+
+const ready=Arcade.readyCheck(['rdy0','rdy1'],startMatch);
+const ready2=Arcade.readyCheck(['erdy0','erdy1'],startMatch);
+Arcade.on({
+  press(p,a){
+    if(state==='title'&&a==='act')ready.press(p);
+    else if(state==='end'&&a==='act')ready2.press(p);
+    else if((state==='play'||state==='serve')&&a==='act'){const m=M[p];if(m.cool<=0){m.dash=.16;m.cool=.9;tone(p?300:260,.12,'sawtooth',.06,2.2)}}
+  },
+  pause:togglePause,
+  blur(){if(state==='play'||state==='serve')togglePause()}
+});
+
+function burst(x,y,c,n,sp){for(let k=0;k<n;k++){const a=Math.random()*7,s=sp*(.3+Math.random());parts.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:.4+Math.random()*.6,max:1,c:Math.random()<.3?'#fff':c,r:1.5+Math.random()*3})}}
+
+function stepMallet(m,dt){
+  const ax=Arcade.axis(m.i);let len=Math.hypot(ax.x,ax.y)||1;
+  const top=m.dash>0?1500:640;
+  const tx=ax.x/len*top,ty=ax.y/len*top;
+  const k=Math.min(1,dt*(m.dash>0?30:13));
+  m.vx+=(tx-m.vx)*k;m.vy+=(ty-m.vy)*k;
+  m.x+=m.vx*dt;m.y+=m.vy*dt;
+  const minX=m.i===0?T.l+MR:CX+MR*.15,maxX=m.i===0?CX-MR*.15:T.r-MR;
+  if(m.x<minX){m.x=minX;m.vx=Math.max(0,m.vx)}if(m.x>maxX){m.x=maxX;m.vx=Math.min(0,m.vx)}
+  if(m.y<T.t+MR){m.y=T.t+MR;m.vy=Math.max(0,m.vy)}if(m.y>T.b-MR){m.y=T.b-MR;m.vy=Math.min(0,m.vy)}
+}
+function collideMallet(m){
+  const dx=puck.x-m.x,dy=puck.y-m.y,d=Math.hypot(dx,dy),R=MR+PR;
+  if(d>=R||d===0)return;
+  const nx=dx/d,ny=dy/d;
+  puck.x=m.x+nx*R;puck.y=m.y+ny*R;
+  const rvx=puck.vx-m.vx,rvy=puck.vy-m.vy,vn=rvx*nx+rvy*ny;
+  if(vn<0){
+    puck.vx-=1.85*vn*nx;puck.vy-=1.85*vn*ny;
+    const imp=-vn;
+    if(m.hitT<=0){m.hitT=.08;
+      if(imp>900){tone(180,.14,'square',.16,.5);noise(.12,.25,3000);burst(puck.x,puck.y,COL[m.i],22,520);shake=Math.max(shake,8);flash=.18;flashCol=COL[m.i]}
+      else tone(260+Math.min(imp,900)*.4,.06,'triangle',.18,.7);
+    }
+  }
+}
+function collideWalls(){
+  const inMouth=puck.y>GOAL.top&&puck.y<GOAL.bot;
+  let hit=0;
+  if(puck.y<T.t+PR){puck.y=T.t+PR;puck.vy=Math.abs(puck.vy)*.9;hit=Math.abs(puck.vy)}
+  if(puck.y>T.b-PR){puck.y=T.b-PR;puck.vy=-Math.abs(puck.vy)*.9;hit=Math.abs(puck.vy)}
+  if(!inMouth){
+    if(puck.x<T.l+PR){puck.x=T.l+PR;puck.vx=Math.abs(puck.vx)*.9;hit=Math.abs(puck.vx)}
+    if(puck.x>T.r-PR){puck.x=T.r-PR;puck.vx=-Math.abs(puck.vx)*.9;hit=Math.abs(puck.vx)}
+  }
+  // goal posts (round corners of the mouth)
+  for(const px of [T.l,T.r])for(const py of [GOAL.top,GOAL.bot]){
+    const dx=puck.x-px,dy=puck.y-py,d=Math.hypot(dx,dy);
+    if(d<PR&&d>0){const nx=dx/d,ny=dy/d;puck.x=px+nx*PR;puck.y=py+ny*PR;const vn=puck.vx*nx+puck.vy*ny;if(vn<0){puck.vx-=1.9*vn*nx;puck.vy-=1.9*vn*ny;hit=-vn}}
+  }
+  if(hit>120)tone(120+Math.min(hit,1200)*.12,.05,'square',.07,.6);
+}
+function goal(scorer){
+  M[scorer].score++;paintScore();lastScorer=scorer;
+  const gx=scorer===0?T.r:T.l;
+  burst(gx,puck.y,COL[scorer],90,700);burst(gx,puck.y,'#ffffff',30,400);
+  shake=22;flash=.55;flashCol=COL[scorer];
+  noise(.8,.3,1500);[392,523,659,784].forEach((f,i)=>tone(f,.18,'square',.11,1,i*.09));
+  state='goal';goalT=2.0;
+}
+function update(dt){
+  time+=dt;
+  for(const q of parts){q.life-=dt;q.x+=q.vx*dt;q.y+=q.vy*dt;q.vx*=.93;q.vy*=.93}
+  parts=parts.filter(q=>q.life>0);
+  shake=Math.max(0,shake-dt*60);flash=Math.max(0,flash-dt*1.8);
+  if(state==='goal'){goalT-=dt;
+    puck.x+=puck.vx*dt*.2;puck.y+=puck.vy*dt*.2;
+    if(goalT<=0){
+      if(M[lastScorer].score>=winTarget){showEnd();return}
+      resetPositions(1-lastScorer);state='serve';serveT=1.2;
+    }return}
+  if(state!=='play'&&state!=='serve')return;
+  if(state==='serve'){serveT-=dt;if(serveT<=0){state='play';tone(880,.15,'square',.1)}}
+  const N=8,h=dt/N;
+  for(const m of M){m.dash=Math.max(0,m.dash-dt);m.cool=Math.max(0,m.cool-dt);m.hitT-=dt}
+  for(let s=0;s<N;s++){
+    for(const m of M)stepMallet(m,h);
+    if(state==='play'){
+      puck.x+=puck.vx*h;puck.y+=puck.vy*h;
+      for(const m of M)collideMallet(m);
+      collideWalls();
+      if(puck.x<T.l-PR*.6){goal(1);break}
+      if(puck.x>T.r+PR*.6){goal(0);break}
+    }
+  }
+  const sp=Math.hypot(puck.vx,puck.vy),MAX=1900;
+  if(sp>MAX){puck.vx*=MAX/sp;puck.vy*=MAX/sp}
+  const fr=Math.pow(.62,dt);puck.vx*=fr;puck.vy*=fr;
+  puck.trail.push({x:puck.x,y:puck.y,s:sp});if(puck.trail.length>16)puck.trail.shift();
+}
+function showEnd(){
+  state='end';const w=M[0].score>M[1].score?0:1;
+  const t=$('endTitle');t.textContent=`PLAYER ${w+1} WIN!`;t.style.color=COL[w];t.style.textShadow=`0 0 3cqw ${COL[w]}`;
+  $('endScore').textContent=`${M[0].score} - ${M[1].score}`;ready2.reset();show('ovEnd');Arcade.fanfare();
+}
+
+function drawMallet(m){
+  const c=COL[m.i];
+  ctx.save();ctx.translate(m.x,m.y);
+  ctx.fillStyle='rgba(0,0,0,.45)';ctx.beginPath();ctx.ellipse(6,10,MR,MR*.9,0,0,7);ctx.fill();
+  if(m.dash>0){ctx.strokeStyle=c;ctx.globalAlpha=.6;ctx.lineWidth=6;ctx.beginPath();ctx.arc(0,0,MR+10,0,7);ctx.stroke();ctx.globalAlpha=1}
+  ctx.shadowColor=c;ctx.shadowBlur=26;
+  const g=ctx.createRadialGradient(-12,-14,4,0,0,MR);g.addColorStop(0,'#ffffff');g.addColorStop(.25,c);g.addColorStop(1,'#00000000');
+  ctx.fillStyle=c;ctx.beginPath();ctx.arc(0,0,MR,0,7);ctx.fill();
+  ctx.shadowBlur=0;
+  ctx.fillStyle='rgba(0,0,0,.28)';ctx.beginPath();ctx.arc(0,0,MR*.72,0,7);ctx.fill();
+  const k=ctx.createRadialGradient(-6,-8,2,0,0,MR*.45);k.addColorStop(0,'#fff');k.addColorStop(1,c);
+  ctx.fillStyle=k;ctx.beginPath();ctx.arc(0,0,MR*.45,0,7);ctx.fill();
+  // dash cooldown ring
+  if(m.cool>0){ctx.strokeStyle='rgba(255,255,255,.55)';ctx.lineWidth=3;ctx.beginPath();ctx.arc(0,0,MR+6,-Math.PI/2,-Math.PI/2+Math.PI*2*(1-m.cool/.9));ctx.stroke()}
+  ctx.restore();
+}
+function draw(){
+  ctx.save();
+  if(shake>0)ctx.translate((Math.random()-.5)*shake,(Math.random()-.5)*shake);
+  ctx.drawImage(tbl,0,0);
+  // goal glow when scoring
+  if(state==='goal'){const gx=lastScorer===0?T.r:T.l;const g=ctx.createRadialGradient(gx,CY,10,gx,CY,320);g.addColorStop(0,COL[lastScorer]+'88');g.addColorStop(1,COL[lastScorer]+'00');ctx.fillStyle=g;ctx.fillRect(0,0,W,H)}
+  // trail
+  ctx.globalCompositeOperation='lighter';
+  puck.trail.forEach((p,i)=>{const a=i/puck.trail.length;if(p.s<200)return;ctx.fillStyle=`rgba(200,255,120,${a*.35*Math.min(1,p.s/1200)})`;ctx.beginPath();ctx.arc(p.x,p.y,PR*a,0,7);ctx.fill()});
+  ctx.globalCompositeOperation='source-over';
+  for(const m of M)drawMallet(m);
+  // puck
+  if(state!=='goal'||goalT>1.7){
+    ctx.save();ctx.translate(puck.x,puck.y);
+    ctx.fillStyle='rgba(0,0,0,.5)';ctx.beginPath();ctx.ellipse(4,7,PR,PR*.9,0,0,7);ctx.fill();
+    ctx.shadowColor='#c6ff3d';ctx.shadowBlur=22;ctx.fillStyle='#c6ff3d';ctx.beginPath();ctx.arc(0,0,PR,0,7);ctx.fill();ctx.shadowBlur=0;
+    ctx.fillStyle='#1b2a06';ctx.beginPath();ctx.arc(0,0,PR*.72,0,7);ctx.fill();
+    ctx.strokeStyle='#c6ff3d';ctx.lineWidth=2;ctx.beginPath();ctx.arc(0,0,PR*.45,0,7);ctx.stroke();
+    ctx.restore();
+  }
+  ctx.globalCompositeOperation='lighter';
+  for(const q of parts){ctx.globalAlpha=Math.max(0,q.life/q.max);ctx.fillStyle=q.c;ctx.beginPath();ctx.arc(q.x,q.y,q.r,0,7);ctx.fill()}
+  ctx.globalAlpha=1;ctx.globalCompositeOperation='source-over';
+  ctx.restore();
+  if(flash>0){ctx.fillStyle=flashCol;ctx.globalAlpha=flash*.3;ctx.fillRect(0,0,W,H);ctx.globalAlpha=1}
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  if(state==='goal'){
+    const k=Math.min(1,(2-goalT)/.25),sc=.6+.4*k+Math.sin(time*12)*.02;
+    ctx.save();ctx.translate(CX,CY);ctx.scale(sc,sc);
+    ctx.font='400 170px "Dela Gothic One"';ctx.fillStyle=COL[lastScorer];ctx.shadowColor=COL[lastScorer];ctx.shadowBlur=40;ctx.fillText('GOAL!',0,-10);
+    ctx.shadowBlur=0;ctx.font='800 30px "M PLUS Rounded 1c"';ctx.fillStyle='#fff';ctx.fillText(`PLAYER ${lastScorer+1}`,0,96);
+    ctx.restore();
+  }
+  if(state==='serve'){
+    ctx.font='400 64px "Dela Gothic One"';ctx.fillStyle=`rgba(255,255,255,${.5+.5*Math.sin(time*10)})`;ctx.fillText(serveT>.5?'READY':'GO!',CX,CY);
+    const mp=M.findIndex(m=>m.score===winTarget-1);
+    if(mp>=0){ctx.font='800 24px "M PLUS Rounded 1c"';ctx.fillStyle=COL[mp];ctx.fillText(M[0].score===M[1].score?'どちらもマッチポイント!':`PLAYER ${mp+1} マッチポイント!`,CX,CY+60)}
+  }
+}
+function togglePause(){
+  if(state==='paused'){state=prevState;hide('ovPause');return}
+  if(state==='play'||state==='serve'||state==='goal'){prevState=state;state='paused';show('ovPause')}
+}
+function toTitle(){state='title';ready.reset();hide('ovPause');hide('ovEnd');show('ovTitle');resetPositions(-1)}
+$('pauseBtn').onclick=e=>{togglePause();e.target.blur()};
+$('resumeBtn').onclick=togglePause;$('quitBtn').onclick=toTitle;$('titleBtn').onclick=toTitle;
+$('againBtn').onclick=()=>{Arcade.unlock();startMatch()};$('startBtn').onclick=()=>{Arcade.unlock();startMatch()};
+document.querySelectorAll('#segWin button').forEach(b=>b.onclick=()=>{winTarget=+b.dataset.v;document.querySelectorAll('#segWin button').forEach(x=>x.setAttribute('aria-pressed',x===b));paintScore()});
+resetPositions(-1);paintScore();
+Arcade.loop((dt)=>{if(state!=='paused')update(dt);draw()});
+</script>
+</body>
+</html>
