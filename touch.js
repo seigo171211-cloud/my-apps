@@ -2,6 +2,15 @@
 // so the PC version of every game behaves exactly as before.
 // Layout: phone held in landscape, P1 uses the left half, P2 the right half.
 'use strict';
+// Canvas roundRect is missing on iOS 15 and older; fill it in (browsers that have it are untouched).
+if(window.CanvasRenderingContext2D&&!CanvasRenderingContext2D.prototype.roundRect){
+  CanvasRenderingContext2D.prototype.roundRect=function(x,y,w,h,r=0){
+    let [a,b,c,d]=Array.isArray(r)?(r.length===1?[r[0],r[0],r[0],r[0]]:r.length===2?[r[0],r[1],r[0],r[1]]:r.length===3?[r[0],r[1],r[2],r[1]]:r):[r,r,r,r];
+    const m=Math.min(Math.abs(w),Math.abs(h))/2;[a,b,c,d]=[a,b,c,d].map(v=>Math.min(+v||0,m));
+    this.moveTo(x+a,y);this.lineTo(x+w-b,y);this.arcTo(x+w,y,x+w,y+b,b);this.lineTo(x+w,y+h-c);this.arcTo(x+w,y+h,x+w-c,y+h,c);
+    this.lineTo(x+d,y+h);this.arcTo(x,y+h,x,y+h-d,d);this.lineTo(x,y+a);this.arcTo(x,y,x+a,y,a);this.closePath();return this;
+  };
+}
 const TouchPad=(()=>{
   // iPadOS Safari reports itself as a Mac, and with a keyboard/trackpad attached it matches (hover:hover),
   // so also treat a multi-touch "Macintosh" as touch. Real Macs report maxTouchPoints 0.
@@ -64,16 +73,16 @@ body.touch .touchnote{display:block}
       set(next);
     }
     function end(e){if(e.pointerId!==id)return;id=null;el.classList.remove('on');set(new Set());stick[p].x=stick[p].y=0;stick[p].on=false;if(knob)knob.style.transform=''}
-    el.addEventListener('pointerdown',e=>{e.preventDefault();if(id!==null)return;id=e.pointerId;el.classList.add('on');el.setPointerCapture(id);o.unlock&&o.unlock();move(e)});
-    el.addEventListener('pointermove',e=>{if(e.pointerId===id)move(e)});
-    el.addEventListener('pointerup',end);el.addEventListener('pointercancel',end);el.addEventListener('lostpointercapture',end);
+    el.addEventListener('pointerdown',e=>{e.preventDefault();if(id!==null)return;id=e.pointerId;el.classList.add('on');o.unlock&&o.unlock();move(e)});
+    addEventListener('pointermove',e=>{if(e.pointerId===id)move(e)});
+    addEventListener('pointerup',end);addEventListener('pointercancel',end);
     zone.appendChild(el);
   }
   function btn(zone,p,a,label,cls,o){
     const b=document.createElement('div');b.className='tc-btn '+cls;b.textContent=label;let id=null;
-    b.addEventListener('pointerdown',e=>{e.preventDefault();if(id!==null)return;id=e.pointerId;b.setPointerCapture(id);b.classList.add('on');o.unlock&&o.unlock();o.down(p,a)});
+    b.addEventListener('pointerdown',e=>{e.preventDefault();if(id!==null)return;id=e.pointerId;b.classList.add('on');o.unlock&&o.unlock();o.down(p,a)});
     const end=e=>{if(e.pointerId!==id)return;id=null;b.classList.remove('on');o.up(p,a)};
-    b.addEventListener('pointerup',end);b.addEventListener('pointercancel',end);b.addEventListener('lostpointercapture',end);
+    addEventListener('pointerup',end);addEventListener('pointercancel',end);
     zone.appendChild(b);
   }
   // Stop double-tap / pinch zoom (iOS ignores user-scalable=no alone), and undo it if it happens anyway:
