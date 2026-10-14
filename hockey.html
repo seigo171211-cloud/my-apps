@@ -69,6 +69,7 @@ body{background:radial-gradient(1200px 600px at 50% -10%,#0f2b45 0%,#04070d 62%)
   </div>
 </div>
 </div>
+<script src="touch.js"></script>
 <script src="arcade.js"></script>
 <script>
 const {tone,noise,show,hide,$}=Arcade;
@@ -137,8 +138,10 @@ function burst(x,y,c,n,sp){for(let k=0;k<n;k++){const a=Math.random()*7,s=sp*(.3
 function stepMallet(m,dt){
   const ax=Arcade.axis(m.i);let len=Math.hypot(ax.x,ax.y)||1;
   const top=m.dash>0?1500:640;
-  const tx=ax.x/len*top,ty=ax.y/len*top;
-  const k=Math.min(1,dt*(m.dash>0?30:13));
+  let tx=ax.x/len*top,ty=ax.y/len*top,k=Math.min(1,dt*(m.dash>0?30:13));
+  if(m.tp){ // touch: mallet chases the finger
+    tx=(m.tp.x-m.x)*16;ty=(m.tp.y-m.y)*16;const s=Math.hypot(tx,ty);if(s>1700){tx*=1700/s;ty*=1700/s}k=Math.min(1,dt*30);
+  }
   m.vx+=(tx-m.vx)*k;m.vy+=(ty-m.vy)*k;
   m.x+=m.vx*dt;m.y+=m.vy*dt;
   const minX=m.i===0?T.l+MR:CX+MR*.15,maxX=m.i===0?CX-MR*.15:T.r-MR;
@@ -285,6 +288,14 @@ $('resumeBtn').onclick=togglePause;$('quitBtn').onclick=toTitle;$('titleBtn').on
 $('againBtn').onclick=()=>{Arcade.unlock();startMatch()};$('startBtn').onclick=()=>{Arcade.unlock();startMatch()};
 document.querySelectorAll('#segWin button').forEach(b=>b.onclick=()=>{winTarget=+b.dataset.v;document.querySelectorAll('#segWin button').forEach(x=>x.setAttribute('aria-pressed',x===b));paintScore()});
 resetPositions(-1);paintScore();
+if(Arcade.touch([null,null],{note:'スマホは横向きで。自分の側の画面をなぞるとマレットが動きます'})){
+  const pos=e=>{const r=cv.getBoundingClientRect();return{x:(e.clientX-r.left)/r.width*W,y:(e.clientY-r.top)/r.height*H}};
+  const owner={};
+  cv.addEventListener('pointerdown',e=>{e.preventDefault();Arcade.unlock();const p=pos(e),i=p.x<CX?0:1;if(M[i].pid!==undefined&&M[i].pid!==null)return;M[i].pid=e.pointerId;owner[e.pointerId]=i;cv.setPointerCapture(e.pointerId);M[i].tp=p});
+  cv.addEventListener('pointermove',e=>{const i=owner[e.pointerId];if(i!==undefined)M[i].tp=pos(e)});
+  const end=e=>{const i=owner[e.pointerId];if(i===undefined)return;delete owner[e.pointerId];M[i].pid=null;M[i].tp=null};
+  cv.addEventListener('pointerup',end);cv.addEventListener('pointercancel',end);
+}
 Arcade.loop((dt)=>{if(state!=='paused')update(dt);draw()});
 </script>
 </body>

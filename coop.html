@@ -88,6 +88,7 @@ body{background:radial-gradient(1200px 600px at 50% -10%,#3a2c12 0%,#0c0a06 62%)
   </div>
 </div>
 </div>
+<script src="touch.js"></script>
 <script src="arcade.js"></script>
 <script>
 const {tone,noise,show,hide,$}=Arcade;
@@ -506,6 +507,7 @@ $('pauseBtn').onclick=e=>{togglePause();e.target.blur()};
 $('resumeBtn').onclick=togglePause;$('retryBtn').onclick=retry;$('selBtn').onclick=toTitle;
 $('nextBtn').onclick=next;$('againBtn').onclick=retry;$('sel2Btn').onclick=toTitle;
 renderLevels();
+Arcade.touch([{pad:'lr'},{pad:'lr'}]);
 Arcade.loop(dt=>{if(state!=='paused')update(dt);draw()});
 </script>
 </body>

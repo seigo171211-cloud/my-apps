@@ -95,6 +95,7 @@ body{background:radial-gradient(1200px 600px at 50% -10%,#3a1d63 0%,#0e0618 62%)
   </div>
 </div>
 </div>
+<script src="touch.js"></script>
 <script src="arcade.js"></script>
 <script>
 const {tone,noise,show,hide,$}=Arcade;
@@ -384,6 +385,7 @@ $('pauseBtn').onclick=e=>{togglePause();e.target.blur()};
 $('resumeBtn').onclick=togglePause;$('quitBtn').onclick=toTitle;$('titleBtn').onclick=toTitle;
 $('againBtn').onclick=()=>{Arcade.unlock();startParty()};$('startBtn').onclick=()=>{Arcade.unlock();startParty()};
 renderList();
+if(Arcade.touch([{pad:'dpad',act:'ボタン'},{pad:'dpad',act:'ボタン'}])){KEYNAME[0]={...KEYNAME[1]};}
 Arcade.loop(dt=>{if(state!=='paused')update(dt);draw()});
 </script>
 </body>

@@ -58,7 +58,7 @@ const Arcade=(()=>{
   // Both players press their action key to start. ids: element ids per player (may be missing).
   function readyCheck(ids,onAll){
     const r=[false,false];
-    const label=p=>(p?'Enter':'F')+' を押して準備OK';
+    const label=p=>typeof TouchPad!=='undefined'&&TouchPad.isTouch?'ボタンを押して準備OK':(p?'Enter':'F')+' を押して準備OK';
     function paint(){ids.forEach((id,p)=>{const el=$(id);if(!el)return;el.classList.toggle('on',r[p]);el.textContent=r[p]?'準備OK ✓':label(p)})}
     paint();
     return{
@@ -67,8 +67,13 @@ const Arcade=(()=>{
     };
   }
 
+  // On-screen controls (touch devices only; see touch.js). Virtual presses go through the same handlers as keys.
+  function vDown(p,a){const c=KEYS[p][a][0];if(held.has(c))return;held.add(c);unlock();h.press(p,a)}
+  function vUp(p,a){const c=KEYS[p][a][0];if(!held.has(c))return;held.delete(c);h.release(p,a)}
+  function touch(controls,extra){return !!(typeof TouchPad!=='undefined'&&TouchPad.init(Object.assign({controls,down:vDown,up:vUp,pause:()=>h.pause(),unlock},extra||{})))}
+
   function loop(step){let last=performance.now();function f(now){const dt=Math.min(.05,(now-last)/1000);last=now;step(dt,now);requestAnimationFrame(f)}requestAnimationFrame(f)}
 
   addEventListener('DOMContentLoaded',()=>{paintMute();const b=$('muteBtn');if(b)b.onclick=()=>{unlock();toggleMute();b.blur()}});
-  return{KEYS,held,isHeld,axis,on:o=>Object.assign(h,o),tone,noise,fanfare,jingle,unlock,show,hide,$,readyCheck,loop,get muted(){return muted}};
+  return{KEYS,held,isHeld,axis,touch,on:o=>Object.assign(h,o),tone,noise,fanfare,jingle,unlock,show,hide,$,readyCheck,loop,get muted(){return muted}};
 })();
