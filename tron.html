@@ -73,13 +73,13 @@ kbd{display:inline-block;min-width:2.1cqw;padding:0 .5cqw;border-radius:.5cqw;ba
   <canvas id="cv" width="1280" height="720"></canvas>
   <div class="hud" id="hud">
     <div class="side" style="color:var(--p1)">
-      <div class="pname">PLAYER 1</div>
+      <div class="pname" data-pname="0">PLAYER 1</div>
       <div class="pips" id="pips0"></div>
       <div class="meter"><i id="boost0"></i></div>
     </div>
     <div class="center"><b id="roundLbl">ROUND 1</b><span id="timeLbl">0.0s</span></div>
     <div class="side r" style="color:var(--p2)">
-      <div class="pname">PLAYER 2</div>
+      <div class="pname" data-pname="1">PLAYER 2</div>
       <div class="pips" id="pips1"></div>
       <div class="meter"><i id="boost1"></i></div>
     </div>
@@ -93,7 +93,7 @@ kbd{display:inline-block;min-width:2.1cqw;padding:0 .5cqw;border-radius:.5cqw;ba
         移動 <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd><br>
         ブースト <kbd>F</kbd> / <kbd>Space</kbd>
         <div class="rdy" id="rdy0">F を押して準備OK</div></div>
-      <div class="ctrl p2"><h3>PLAYER 2</h3>
+      <div class="ctrl p2"><h3 data-pname="1">PLAYER 2</h3>
         移動 <kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd><br>
         ブースト <kbd>Enter</kbd> / <kbd>/</kbd> / <kbd>0</kbd>
         <div class="rdy" id="rdy1">Enter を押して準備OK</div></div>
@@ -122,6 +122,7 @@ kbd{display:inline-block;min-width:2.1cqw;padding:0 .5cqw;border-radius:.5cqw;ba
 </div>
 </div>
 <script src="touch.js"></script>
+<script src="cpu.js"></script>
 <script>
 'use strict';
 // ---------- input ----------
@@ -131,7 +132,7 @@ const KEYS=[
 ];
 const ALL=new Set(KEYS.flatMap(k=>Object.values(k).flat()));
 const held=new Set();
-const isHeld=(p,a)=>KEYS[p][a].some(c=>held.has(c));
+const isHeld=(p,a)=>CpuMode.on?(p===0&&(KEYS[0][a].some(c=>held.has(c))||KEYS[1][a].some(c=>held.has(c)))):KEYS[p][a].some(c=>held.has(c));
 function whoAct(code){for(let p=0;p<2;p++)for(const a in KEYS[p])if(KEYS[p][a].includes(code))return[p,a];return null}
 addEventListener('keydown',e=>{
   if(ALL.has(e.code)||e.code==='Escape')e.preventDefault();
@@ -140,7 +141,7 @@ addEventListener('keydown',e=>{
   unlockAudio();
   if(e.code==='Escape'||e.code==='KeyP'){togglePause();return}
   if(e.code==='KeyM'){toggleMute();return}
-  const w=whoAct(e.code); if(w)onPress(w[0],w[1]);
+  const w=whoAct(e.code); if(w)onPress(w[0]&&!CpuMode.on?1:0,w[1]);
 });
 addEventListener('keyup',e=>held.delete(e.code));
 addEventListener('blur',()=>{held.clear(); if(state==='play')togglePause()});
@@ -183,10 +184,10 @@ function onPress(p,a){
   if((d[0]===last[0]&&d[1]===last[1])||(d[0]===-last[0]&&d[1]===-last[1]))return;
   if(pl.q.length<3)pl.q.push(d);
 }
-function updateReady(){for(let p=0;p<2;p++){const ids=state==='end'?null:document.getElementById('rdy'+p);if(ids){ids.classList.toggle('on',ready[p]);ids.textContent=ready[p]?'準備OK ✓':TouchPad.isTouch?'ボタンを押して準備OK':(p?'Enter':'F')+' を押して準備OK'}}}
+function updateReady(){for(let p=0;p<2;p++){const ids=state==='end'?null:document.getElementById('rdy'+p);if(ids){ids.classList.toggle('on',ready[p]);ids.textContent=ready[p]?(p&&CpuMode.on?'CPU 準備OK ✓':'準備OK ✓'):TouchPad.isTouch?'ボタンを押して準備OK':(p?'Enter':'F')+' を押して準備OK'}}}
 
 function startMatch(){
-  ready[0]=ready[1]=false;updateReady();
+  ready[0]=false;ready[1]=CpuMode.on;updateReady();
   P.forEach(p=>p.score=0);round=1;
   hide('ovTitle');hide('ovEnd');renderPips();resetRound();
 }
@@ -207,8 +208,58 @@ function seg(p,x0,y0,x1,y1){
   tctx.beginPath();tctx.moveTo(x0*C+C/2,y0*C+C/2);tctx.lineTo(x1*C+C/2,y1*C+C/2);tctx.stroke();
   tctx.shadowBlur=0;tctx.strokeStyle='rgba(255,255,255,.75)';tctx.lineWidth=1.6;tctx.stroke();
 }
+// ---------- CPU (drives player 2) ----------
+const AI={boost:false};
+const cpuP=p=>CpuMode.on&&p.i===1;
+const NC=COLS*ROWS,stamp=new Int32Array(NC),qb=new Int32Array(NC),dA=new Int32Array(NC),dB=new Int32Array(NC);let stampN=0;
+const free=(x,y)=>x>=0&&y>=0&&x<COLS&&y<ROWS&&!inZone(x,y)&&!grid[y*COLS+x];
+let aiMargin=0; // late in a round the CPU keeps away from the edges that are about to close in
+const afree=(x,y)=>free(x,y)&&(!aiMargin||(x>=aiMargin&&y>=aiMargin&&x<COLS-aiMargin&&y<ROWS-aiMargin));
+const NB=[[1,0],[-1,0],[0,1],[0,-1]];
+function flood(sx,sy,cap){ // open cells reachable from (sx,sy), up to cap
+  stampN++;let h=0,t=0;qb[t++]=sy*COLS+sx;stamp[sy*COLS+sx]=stampN;
+  while(h<t&&h<cap){const c=qb[h++],x=c%COLS,y=(c/COLS)|0;
+    for(const[dx,dy]of NB){const nx=x+dx,ny=y+dy;if(afree(nx,ny)&&stamp[ny*COLS+nx]!==stampN){stamp[ny*COLS+nx]=stampN;qb[t++]=ny*COLS+nx}}}
+  return Math.min(h,cap);
+}
+function dist(sx,sy,out){
+  out.fill(-1);let h=0,t=0;qb[t++]=sy*COLS+sx;out[sy*COLS+sx]=0;
+  while(h<t){const c=qb[h++],x=c%COLS,y=(c/COLS)|0;
+    for(const[dx,dy]of NB){const nx=x+dx,ny=y+dy,n=ny*COLS+nx;if(afree(nx,ny)&&out[n]<0){out[n]=out[c]+1;qb[t++]=n}}}
+}
+function territory(mx,my,ox,oy){ // cells I reach before the opponent, minus the reverse
+  dist(mx,my,dA);dist(ox,oy,dB);let s=0;
+  for(let i=0;i<NC;i++){const a=dA[i],b=dB[i];if(a>=0&&(b<0||a<b))s++;else if(b>=0&&(a<0||b<a))s--}
+  return s;
+}
+function aiSteer(p){
+  const lvl=CpuMode.level,o=P[0],d=p.dir;
+  const opts=[d,[d[1],-d[0]],[-d[1],d[0]]];
+  let best=d,bs=-Infinity;
+  if(lvl===0&&Math.random()<.05){AI.boost=false;return} // よわい: sometimes doesn't look
+  aiMargin=lvl>0&&roundTime>24?shrink+4:0;
+  for(let pass=0;pass<2&&bs===-Infinity;pass++){if(pass)aiMargin=0;
+  for(let k=0;k<3;k++){
+    const c=opts[k],nx=p.x+c[0],ny=p.y+c[1];
+    if(!afree(nx,ny))continue;
+    let sc;
+    if(lvl===0)sc=(free(nx+c[0],ny+c[1])?10:0)+(k===0?2.5:0)+Math.random()*3;
+    else{
+      sc=flood(nx,ny,lvl===1?300:1500)*3;
+      if(lvl===2&&o.alive)sc+=territory(nx,ny,o.x,o.y);
+      if(o.alive&&nx===o.x+o.dir[0]&&ny===o.y+o.dir[1])sc-=1e5; // head-on
+      sc+=(k===0?4:0)+Math.random()*(lvl===1?8:1);
+    }
+    if(sc>bs){bs=sc;best=c}
+  }}
+  aiMargin=0;
+  p.dir=best;
+  let run=0;while(run<30&&free(p.x+best[0]*(run+1),p.y+best[1]*(run+1)))run++;
+  const near=o.alive?Math.abs(o.x-p.x)+Math.abs(o.y-p.y):999;
+  AI.boost=lvl===2?run>=10&&near<40:lvl===1?run>=22&&near<22:false;
+}
 function moveSet(list){
-  for(const p of list){if(p.q.length)p.dir=p.q.shift();p.nx=p.x+p.dir[0];p.ny=p.y+p.dir[1];p.dead=false}
+  for(const p of list){if(cpuP(p))aiSteer(p);else if(p.q.length)p.dir=p.q.shift();p.nx=p.x+p.dir[0];p.ny=p.y+p.dir[1];p.dead=false}
   for(const p of list){
     if(p.nx<0||p.ny<0||p.nx>=COLS||p.ny>=ROWS||inZone(p.nx,p.ny)||grid[p.ny*COLS+p.nx])p.dead=true;
   }
@@ -249,7 +300,7 @@ function update(dt){
 
   roundTime+=dt;
   for(const p of P){
-    p.boosting=p.alive&&isHeld(p.i,'act')&&p.boost>.04;
+    p.boosting=p.alive&&(cpuP(p)?AI.boost:isHeld(p.i,'act'))&&p.boost>.04;
     if(p.boosting)p.boost=Math.max(0,p.boost-dt*.75);else p.boost=Math.min(1,p.boost+dt*.12);
   }
   if(roundTime>30){shrinkT+=dt;if(shrinkT>1.1&&shrink<28){shrinkT=0;shrink++;tone(120,.08,'square',.06);
@@ -267,9 +318,9 @@ function update(dt){
 }
 function renderPips(){for(let i=0;i<2;i++){const el=document.getElementById('pips'+i);el.innerHTML='';for(let k=0;k<winTarget;k++){const d=document.createElement('i');d.className='pip'+(k<P[i].score?' on':'');el.appendChild(d)}}}
 function showEnd(){
-  state='end';ready[0]=ready[1]=false;
+  state='end';ready[0]=false;ready[1]=CpuMode.on;
   const w=P[0].score>P[1].score?0:1;
-  const t=document.getElementById('endTitle');t.textContent=`PLAYER ${w+1} WIN!`;t.style.color=COLORS[w];t.style.textShadow=`0 0 3cqw ${COLORS[w]}`;
+  const t=document.getElementById('endTitle');t.textContent=CpuMode.winText(w);t.style.color=COLORS[w];t.style.textShadow=`0 0 3cqw ${COLORS[w]}`;
   document.getElementById('endScore').textContent=`${P[0].score} - ${P[1].score}`;
   show('ovEnd');
   [523,659,784,1046].forEach((f,i)=>tone(f,.2,'square',.1,1,i*.13));
@@ -297,7 +348,7 @@ function draw(t){
     ctx.beginPath();ctx.moveTo(10,0);ctx.lineTo(-6,-6);ctx.lineTo(-3,0);ctx.lineTo(-6,6);ctx.closePath();ctx.fill();
     ctx.fillStyle='#fff';ctx.shadowBlur=0;ctx.beginPath();ctx.arc(2,0,2.6,0,7);ctx.fill();
     ctx.restore();
-    if(state==='countdown'){ctx.fillStyle=p.color;ctx.font='800 18px "M PLUS Rounded 1c"';ctx.textAlign='center';ctx.fillText('P'+(p.i+1),x,y-22)}
+    if(state==='countdown'){ctx.fillStyle=p.color;ctx.font='800 18px "M PLUS Rounded 1c"';ctx.textAlign='center';ctx.fillText(CpuMode.on?CpuMode.short(p.i):'P'+(p.i+1),x,y-22)}
   }
   ctx.globalCompositeOperation='lighter';
   for(const q of particles){
@@ -322,7 +373,7 @@ function draw(t){
     ctx.fillStyle=`rgba(4,5,14,${.5*k})`;ctx.fillRect(0,H/2-90,W,180);
     ctx.font='400 84px "Dela Gothic One"';
     if(roundWinner<0){ctx.fillStyle='#fff';ctx.fillText('DRAW',W/2,H/2-10)}
-    else{ctx.fillStyle=COLORS[roundWinner];ctx.shadowColor=COLORS[roundWinner];ctx.shadowBlur=30;ctx.fillText(`P${roundWinner+1} がラウンド獲得!`,W/2,H/2-10);ctx.shadowBlur=0}
+    else{ctx.fillStyle=COLORS[roundWinner];ctx.shadowColor=COLORS[roundWinner];ctx.shadowBlur=30;ctx.fillText(`${CpuMode.short(roundWinner)} がラウンド獲得!`,W/2,H/2-10);ctx.shadowBlur=0}
     ctx.font='800 26px "M PLUS Rounded 1c"';ctx.fillStyle='#cfd6ff';ctx.fillText(`${P[0].score}  -  ${P[1].score}`,W/2,H/2+56);
   }
   // HUD dom
@@ -342,7 +393,7 @@ function togglePause(){
   if(state==='play'||state==='countdown'||state==='roundEnd'){prevState=state;state='paused';show('ovPause')}
   else if(state==='end'){toTitle()}
 }
-function toTitle(){state='title';ready[0]=ready[1]=false;updateReady();hide('ovPause');hide('ovEnd');show('ovTitle');grid.fill(0);tctx.clearRect(0,0,W,H);particles=[];P.forEach(p=>p.alive=false)}
+function toTitle(){state='title';ready[0]=false;ready[1]=CpuMode.on;updateReady();hide('ovPause');hide('ovEnd');show('ovTitle');grid.fill(0);tctx.clearRect(0,0,W,H);particles=[];P.forEach(p=>p.alive=false)}
 document.getElementById('pauseBtn').onclick=()=>togglePause();
 document.getElementById('resumeBtn').onclick=()=>togglePause();
 document.getElementById('quitBtn').onclick=toTitle;
@@ -351,6 +402,7 @@ document.getElementById('againBtn').onclick=()=>{unlockAudio();startMatch()};
 document.getElementById('startBtn').onclick=()=>{unlockAudio();startMatch()};
 document.querySelectorAll('#segWin button').forEach(b=>b.onclick=()=>{winTarget=+b.dataset.v;document.querySelectorAll('#segWin button').forEach(x=>x.setAttribute('aria-pressed',x===b));renderPips()});
 renderPips();P.forEach(p=>p.alive=false);
+CpuMode.mount('tron',document.getElementById('segWin').parentNode,()=>{if(state==='title'){ready[1]=CpuMode.on;updateReady()}});
 if(TouchPad.init({controls:[{pad:'dpad',act:'ブースト'},{pad:'dpad',act:'ブースト'}],pause:togglePause,unlock:unlockAudio,
   down(p,a){const c=KEYS[p][a][0];if(held.has(c))return;held.add(c);unlockAudio();onPress(p,a)},
   up(p,a){held.delete(KEYS[p][a][0])}}))updateReady();

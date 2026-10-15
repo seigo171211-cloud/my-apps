@@ -41,7 +41,7 @@ body{background:radial-gradient(1200px 600px at 50% -10%,#0f2b45 0%,#04070d 62%)
         移動 <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd><br>
         ダッシュ <kbd>F</kbd> / <kbd>Space</kbd>
         <div class="rdy" id="rdy0"></div></div>
-      <div class="ctrl p2"><h3>PLAYER 2（右）</h3>
+      <div class="ctrl p2"><h3><span data-pname="1">PLAYER 2</span><span class="pcol">（右）</span></h3>
         移動 <kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd><br>
         ダッシュ <kbd>Enter</kbd> / <kbd>/</kbd> / <kbd>0</kbd>
         <div class="rdy" id="rdy1"></div></div>
@@ -70,6 +70,7 @@ body{background:radial-gradient(1200px 600px at 50% -10%,#0f2b45 0%,#04070d 62%)
 </div>
 </div>
 <script src="touch.js"></script>
+<script src="cpu.js"></script>
 <script src="arcade.js"></script>
 <script>
 const {tone,noise,show,hide,$}=Arcade;
@@ -123,6 +124,55 @@ function paintScore(){$('sc0').textContent=M[0].score;$('sc1').textContent=M[1].
 
 const ready=Arcade.readyCheck(['rdy0','rdy1'],startMatch);
 const ready2=Arcade.readyCheck(['erdy0','erdy1'],startMatch);
+
+// ---------- CPU (drives the right mallet) ----------
+const AI={t:0,tx:0,ty:0};
+function foldY(y){const lo=T.t+PR,hi=T.b-PR,span=hi-lo;let v=(y-lo)%(2*span);if(v<0)v+=2*span;return lo+(v>span?2*span-v:v)}
+// Choose where to send the puck: straight at the goal or banked off the top/bottom rail,
+// whichever line stays farthest from the defending mallet (mirror trick for the banks).
+function segDist(px,py,ax,ay,bx,by){const vx=bx-ax,vy=by-ay,t=Math.max(0,Math.min(1,((px-ax)*vx+(py-ay)*vy)/(vx*vx+vy*vy)));return Math.hypot(ax+vx*t-px,ay+vy*t-py)}
+function pickAim(){
+  const op=M[0],gx=T.l-60,top=T.t+PR,bot=T.b-PR,c=[];
+  for(const gy of[GOAL.top+PR+10,CY,GOAL.bot-PR-10]){
+    c.push({x:gx,y:gy,clear:segDist(op.x,op.y,puck.x,puck.y,gx,gy)});
+    c.push({x:gx,y:2*top-gy,clear:segDist(op.x,2*top-op.y,puck.x,puck.y,gx,2*top-gy)}); // off the top rail
+    c.push({x:gx,y:2*bot-gy,clear:segDist(op.x,2*bot-op.y,puck.x,puck.y,gx,2*bot-gy)}); // off the bottom rail
+  }
+  c.sort((a,b)=>b.clear-a.clear);
+  const pick=CpuMode.level===2?c[0]:CpuMode.level===1?c[Math.random()<.6?0:1+(Math.random()*2|0)]:c[(Math.random()*c.length)|0];
+  AI.aim={x:pick.x,y:pick.y+(Math.random()-.5)*CpuMode.lv(80,40,16)};AI.aimT=CpuMode.lv(.4,.8,1.2);
+}
+function cpuThink(dt){
+  AI.aimT=(AI.aimT||0)-dt;
+  const m=M[1],L=CpuMode.lv;
+  m.cap=L(480,860,1180);
+  AI.t-=dt;
+  if(AI.t<=0){
+    AI.t=L(.32,.13,.04);
+    const err=L(70,32,10),homeX=T.r-110;
+    let tx=homeX,ty=CY+(puck.y-CY)*.55;
+    if(state==='play'&&puck.vx>260&&puck.x>m.x-MR){ // got past me: cover the goal mouth
+      tx=T.r-MR-4;ty=Math.max(GOAL.top+10,Math.min(GOAL.bot-10,puck.y));
+    }else if(state==='play'&&puck.vx>260&&puck.x<homeX){ // fast shot coming: meet it on the defence line
+      const t=(homeX-puck.x)/puck.vx;ty=foldY(puck.y+puck.vy*t*L(.5,.85,1));
+    }else if(state==='play'&&puck.x>CX-PR){
+      // get behind the puck (seen from the opponent goal) and drive through it
+      if(!AI.aim||AI.aimT<=0)pickAim();
+      const gx=AI.aim.x,gy=AI.aim.y;
+      let dx=puck.x-gx,dy=puck.y-gy;const d=Math.hypot(dx,dy)||1;dx/=d;dy/=d;
+      const rx=m.x-puck.x,ry=m.y-puck.y,along=rx*dx+ry*dy,side=Math.abs(rx*dy-ry*dx);
+      if(along>0&&side<L(26,10,7)){tx=puck.x-dx*90;ty=puck.y-dy*90;
+        if(m.cool<=0&&Math.hypot(rx,ry)<MR+PR+40&&Math.random()<L(0,.35,.8)){m.dash=.16;m.cool=.9;tone(300,.12,'sawtooth',.06,2.2)}}
+      else{tx=puck.x+dx*(MR+PR+34);ty=puck.y+dy*(MR+PR+34);
+        if(along<0&&side<MR+PR)ty+=(m.y<puck.y?-1:1)*(MR+PR); // go around instead of pushing it into my own goal
+      }
+    }else if(state==='play'&&puck.vx>60){
+      const t=(homeX-puck.x)/puck.vx;ty=foldY(puck.y+puck.vy*t*L(.5,.85,1));
+    }
+    AI.tx=tx+(Math.random()-.5)*err;AI.ty=ty+(Math.random()-.5)*err;
+  }
+  m.tp={x:AI.tx,y:AI.ty};
+}
 Arcade.on({
   press(p,a){
     if(state==='title'&&a==='act')ready.press(p);
@@ -140,7 +190,7 @@ function stepMallet(m,dt){
   const top=m.dash>0?1500:640;
   let tx=ax.x/len*top,ty=ax.y/len*top,k=Math.min(1,dt*(m.dash>0?30:13));
   if(m.tp){ // touch: mallet chases the finger
-    tx=(m.tp.x-m.x)*16;ty=(m.tp.y-m.y)*16;const s=Math.hypot(tx,ty);if(s>1700){tx*=1700/s;ty*=1700/s}k=Math.min(1,dt*30);
+    const cap=(m.cap||1700)*(m.cap&&m.dash>0?1.7:1);tx=(m.tp.x-m.x)*16;ty=(m.tp.y-m.y)*16;const s=Math.hypot(tx,ty);if(s>cap){tx*=cap/s;ty*=cap/s}k=Math.min(1,dt*30);
   }
   m.vx+=(tx-m.vx)*k;m.vy+=(ty-m.vy)*k;
   m.x+=m.vx*dt;m.y+=m.vy*dt;
@@ -202,6 +252,7 @@ function update(dt){
   if(state==='serve'){serveT-=dt;if(serveT<=0){state='play';tone(880,.15,'square',.1)}}
   const N=8,h=dt/N;
   for(const m of M){m.dash=Math.max(0,m.dash-dt);m.cool=Math.max(0,m.cool-dt);m.hitT-=dt}
+  if(CpuMode.on)cpuThink(dt);
   for(let s=0;s<N;s++){
     for(const m of M)stepMallet(m,h);
     if(state==='play'){
@@ -219,7 +270,7 @@ function update(dt){
 }
 function showEnd(){
   state='end';const w=M[0].score>M[1].score?0:1;
-  const t=$('endTitle');t.textContent=`PLAYER ${w+1} WIN!`;t.style.color=COL[w];t.style.textShadow=`0 0 3cqw ${COL[w]}`;
+  const t=$('endTitle');t.textContent=CpuMode.winText(w);t.style.color=COL[w];t.style.textShadow=`0 0 3cqw ${COL[w]}`;
   $('endScore').textContent=`${M[0].score} - ${M[1].score}`;ready2.reset();show('ovEnd');Arcade.fanfare();
 }
 
@@ -269,13 +320,13 @@ function draw(){
     const k=Math.min(1,(2-goalT)/.25),sc=.6+.4*k+Math.sin(time*12)*.02;
     ctx.save();ctx.translate(CX,CY);ctx.scale(sc,sc);
     ctx.font='400 170px "Dela Gothic One"';ctx.fillStyle=COL[lastScorer];ctx.shadowColor=COL[lastScorer];ctx.shadowBlur=40;ctx.fillText('GOAL!',0,-10);
-    ctx.shadowBlur=0;ctx.font='800 30px "M PLUS Rounded 1c"';ctx.fillStyle='#fff';ctx.fillText(`PLAYER ${lastScorer+1}`,0,96);
+    ctx.shadowBlur=0;ctx.font='800 30px "M PLUS Rounded 1c"';ctx.fillStyle='#fff';ctx.fillText(CpuMode.name(lastScorer),0,96);
     ctx.restore();
   }
   if(state==='serve'){
     ctx.font='400 64px "Dela Gothic One"';ctx.fillStyle=`rgba(255,255,255,${.5+.5*Math.sin(time*10)})`;ctx.fillText(serveT>.5?'READY':'GO!',CX,CY);
     const mp=M.findIndex(m=>m.score===winTarget-1);
-    if(mp>=0){ctx.font='800 24px "M PLUS Rounded 1c"';ctx.fillStyle=COL[mp];ctx.fillText(M[0].score===M[1].score?'どちらもマッチポイント!':`PLAYER ${mp+1} マッチポイント!`,CX,CY+60)}
+    if(mp>=0){ctx.font='800 24px "M PLUS Rounded 1c"';ctx.fillStyle=COL[mp];ctx.fillText(M[0].score===M[1].score?'どちらもマッチポイント!':`${CpuMode.name(mp)} マッチポイント!`,CX,CY+60)}
   }
 }
 function togglePause(){
@@ -288,10 +339,11 @@ $('resumeBtn').onclick=togglePause;$('quitBtn').onclick=toTitle;$('titleBtn').on
 $('againBtn').onclick=()=>{Arcade.unlock();startMatch()};$('startBtn').onclick=()=>{Arcade.unlock();startMatch()};
 document.querySelectorAll('#segWin button').forEach(b=>b.onclick=()=>{winTarget=+b.dataset.v;document.querySelectorAll('#segWin button').forEach(x=>x.setAttribute('aria-pressed',x===b));paintScore()});
 resetPositions(-1);paintScore();
+CpuMode.mount('hockey',$('segWin').parentNode,()=>{ready.reset();ready2.reset();if(!CpuMode.on){M[1].tp=null;M[1].cap=0}});
 if(Arcade.touch([null,null],{note:'スマホは横向きで。自分の側の画面をなぞるとマレットが動きます'})){
   const pos=e=>{const r=cv.getBoundingClientRect();return{x:(e.clientX-r.left)/r.width*W,y:(e.clientY-r.top)/r.height*H}};
   const owner={};
-  cv.addEventListener('pointerdown',e=>{e.preventDefault();Arcade.unlock();const p=pos(e),i=p.x<CX?0:1;if(M[i].pid!==undefined&&M[i].pid!==null)return;M[i].pid=e.pointerId;owner[e.pointerId]=i;cv.setPointerCapture(e.pointerId);M[i].tp=p});
+  cv.addEventListener('pointerdown',e=>{e.preventDefault();Arcade.unlock();const p=pos(e),i=CpuMode.on||p.x<CX?0:1;if(M[i].pid!==undefined&&M[i].pid!==null)return;M[i].pid=e.pointerId;owner[e.pointerId]=i;cv.setPointerCapture(e.pointerId);M[i].tp=p});
   cv.addEventListener('pointermove',e=>{const i=owner[e.pointerId];if(i!==undefined)M[i].tp=pos(e)});
   const end=e=>{const i=owner[e.pointerId];if(i===undefined)return;delete owner[e.pointerId];M[i].pid=null;M[i].tp=null};
   cv.addEventListener('pointerup',end);cv.addEventListener('pointercancel',end);
