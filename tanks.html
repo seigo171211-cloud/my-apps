@@ -41,11 +41,11 @@ body{background:radial-gradient(1200px 600px at 50% -10%,#2a2516 0%,#0b0a07 62%)
     <p class="sub">弾は壁で跳ね返る。跳弾で相手を撃ち抜け！ でも自分の弾にも当たるので注意。</p>
     <div class="ctrls">
       <div class="ctrl p1"><h3>PLAYER 1（青）</h3>
-        前進・後退 <kbd>W</kbd><kbd>S</kbd>　回転 <kbd>A</kbd><kbd>D</kbd><br>
+        移動 <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd>（押した方向へ進む）<br>
         発射 <kbd>F</kbd> / <kbd>Space</kbd>
         <div class="rdy" id="rdy0"></div></div>
       <div class="ctrl p2"><h3><span data-pname="1">PLAYER 2</span><span class="pcol">（オレンジ）</span></h3>
-        前進・後退 <kbd>↑</kbd><kbd>↓</kbd>　回転 <kbd>←</kbd><kbd>→</kbd><br>
+        移動 <kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd>（押した方向へ進む）<br>
         発射 <kbd>Enter</kbd> / <kbd>/</kbd> / <kbd>0</kbd>
         <div class="rdy" id="rdy1"></div></div>
     </div>
@@ -308,7 +308,9 @@ function cpuTank(me,dt){
 }
 function moveTank(t,dt){
   const ax=Arcade.axis(t.i);
-  let turn=ax.x,drive=-ax.y;
+  // keys point where to go (W/↑ = up the screen, D/→ = right ...); the tank turns that way and drives
+  let turn=0,drive=0;
+  if(ax.x||ax.y){const d=wrapA(Math.atan2(ax.y,ax.x)-t.a);turn=Math.max(-1,Math.min(1,d*2.5));drive=Math.abs(d)<1.1?1:0}
   const sk=TouchPad.stick[t.i];
   if(sk.on&&(sk.x||sk.y)){ // touch stick: point where you want to go
     const d=((Math.atan2(sk.y,sk.x)-t.a)%(Math.PI*2)+Math.PI*3)%(Math.PI*2)-Math.PI;
