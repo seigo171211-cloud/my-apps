@@ -31,9 +31,9 @@ body{background:radial-gradient(1200px 600px at 50% -10%,#2a2516 0%,#0b0a07 62%)
 <div class="frame">
   <canvas id="cv" width="1280" height="720"></canvas>
   <div class="hud">
-    <div class="side" style="color:var(--p1)"><div class="pname">PLAYER 1</div><div class="pips" id="pips0"></div><div class="weap" id="weap0"></div></div>
+    <div class="side" style="color:var(--p1)"><div class="pname" data-pname="0">PLAYER 1</div><div class="pips" id="pips0"></div><div class="weap" id="weap0"></div></div>
     <div class="center"><b id="mapLbl"></b><span id="roundLbl"></span></div>
-    <div class="side r" style="color:var(--p2)"><div class="pname">PLAYER 2</div><div class="pips" id="pips1"></div><div class="weap" id="weap1"></div></div>
+    <div class="side r" style="color:var(--p2)"><div class="pname" data-pname="1">PLAYER 2</div><div class="pips" id="pips1"></div><div class="weap" id="weap1"></div></div>
   </div>
 
   <div class="ov" id="ovTitle">
@@ -44,7 +44,7 @@ body{background:radial-gradient(1200px 600px at 50% -10%,#2a2516 0%,#0b0a07 62%)
         前進・後退 <kbd>W</kbd><kbd>S</kbd>　回転 <kbd>A</kbd><kbd>D</kbd><br>
         発射 <kbd>F</kbd> / <kbd>Space</kbd>
         <div class="rdy" id="rdy0"></div></div>
-      <div class="ctrl p2"><h3>PLAYER 2（オレンジ）</h3>
+      <div class="ctrl p2"><h3><span data-pname="1">PLAYER 2</span><span class="pcol">（オレンジ）</span></h3>
         前進・後退 <kbd>↑</kbd><kbd>↓</kbd>　回転 <kbd>←</kbd><kbd>→</kbd><br>
         発射 <kbd>Enter</kbd> / <kbd>/</kbd> / <kbd>0</kbd>
         <div class="rdy" id="rdy1"></div></div>
@@ -73,6 +73,7 @@ body{background:radial-gradient(1200px 600px at 50% -10%,#2a2516 0%,#0b0a07 62%)
 </div>
 </div>
 <script src="touch.js"></script>
+<script src="cpu.js"></script>
 <script src="arcade.js"></script>
 <script>
 const {tone,noise,show,hide,$}=Arcade;
@@ -167,6 +168,7 @@ function pickMap(){if(!mapOrder.length){mapOrder=MAPS.map((_,i)=>i).sort(()=>Mat
 
 function startMatch(){TK.forEach(t=>t.score=0);round=1;mapOrder=[];hide('ovTitle');hide('ovEnd');paintPips();resetRound()}
 function resetRound(){
+  AI.path=[];AI.think=0;AI.fire=.9;AI.dodge=0;AI.pathT=0;
   pickMap();bullets=[];parts=[];items=[];beams=[];itemT=4+Math.random()*3;roundWinner=-1;
   for(let y=0;y<GH;y++)for(let x=0;x<GW;x++){const c=map.g[y][x];if(c==='1'||c==='2'){const t=TK[+c-1];t.x=x*S+S/2;t.y=y*S+S/2;t.a=c==='1'?0:Math.PI}}
   TK.forEach(t=>{t.alive=true;t.cool=0;t.weapon=null;t.ammo=0;t.shield=0;t.turbo=0;t.recoil=0});
@@ -237,6 +239,73 @@ function explode(t){
   dctx.fillStyle='rgba(0,0,0,.45)';dctx.beginPath();dctx.arc(t.x,t.y,46,0,7);dctx.fill();
   if(state==='play'){state='roundEnd';endT=1.8}
 }
+// ---------- CPU (drives tank 2) ----------
+const AI={think:0,fire:0,aimA:null,path:[],pathT:0,dodge:0,dodgeA:0};
+const wrapA=a=>((a%(Math.PI*2))+Math.PI*3)%(Math.PI*2)-Math.PI;
+// Trace a shot like a real bullet; 'op' if it reaches the opponent first, 'self' if it comes back to the shooter.
+function simShot(me,a,maxB){
+  let x=me.x+Math.cos(a)*(R+12),y=me.y+Math.sin(a)*(R+12);if(solidAt(x,y)){x=me.x;y=me.y}
+  let vx=Math.cos(a)*4,vy=Math.sin(a)*4,b=0;const op=TK[1-me.i];
+  for(let dist=0;dist<2400;dist+=4){
+    x+=vx;if(solidAt(x,y)){x-=vx;vx=-vx;b++}
+    y+=vy;if(solidAt(x,y)){y-=vy;vy=-vy;b++}
+    if(b>maxB)return null;
+    if(op.alive&&Math.hypot(op.x-x,op.y-y)<R+2)return'op';
+    if(dist>70&&Math.hypot(me.x-x,me.y-y)<R+6)return'self';
+  }
+  return null;
+}
+function threat(me,horizon){
+  for(const bl of bullets){
+    let x=bl.x,y=bl.y,vx=bl.vx/430*4,vy=bl.vy/430*4;
+    for(let k=0,n=horizon*430/4;k<n;k++){
+      x+=vx;if(solidAt(x,y)){x-=vx;vx=-vx}
+      y+=vy;if(solidAt(x,y)){y-=vy;vy=-vy}
+      if(Math.hypot(me.x-x,me.y-y)<R+10)return{vx,vy};
+    }
+  }
+  return null;
+}
+function bfsPath(me,tx,ty){
+  const sx=Math.floor(me.x/S),sy=Math.floor(me.y/S),gx=Math.floor(tx/S),gy=Math.floor(ty/S);
+  const prev=new Int16Array(GW*GH).fill(-1),q=[sy*GW+sx];prev[q[0]]=q[0];
+  for(let h=0;h<q.length;h++){const c=q[h];if(c===gy*GW+gx)break;const x=c%GW,y=(c/GW)|0;
+    for(const[dx,dy]of[[1,0],[-1,0],[0,1],[0,-1]]){const nx=x+dx,ny=y+dy,n=ny*GW+nx;if(!solid(nx,ny)&&prev[n]<0){prev[n]=c;q.push(n)}}}
+  if(prev[gy*GW+gx]<0)return[];
+  const path=[];for(let c=gy*GW+gx;c!==sy*GW+sx;c=prev[c])path.unshift([(c%GW)*S+S/2,((c/GW)|0)*S+S/2]);
+  return path;
+}
+function cpuTank(me,dt){
+  const op=TK[0],L=CpuMode.lv;
+  AI.think-=dt;AI.fire-=dt;AI.pathT-=dt;
+  if(!op.alive)return{turn:0,drive:0};
+  if(AI.think<=0){
+    AI.think=L(.35,.18,.08);
+    if(AI.dodge<=0&&Math.random()<L(.12,.55,.95)){const th=threat(me,L(.4,.6,.9));
+      if(th){const a=Math.atan2(th.vy,th.vx)+Math.PI/2;AI.dodgeA=[a,a+Math.PI].find(o=>!solidAt(me.x+Math.cos(o)*S*.8,me.y+Math.sin(o)*S*.8))??a;AI.dodge=.35}}
+    const direct=Math.atan2(op.y-me.y,op.x-me.x);
+    AI.aimA=null;
+    if(simShot(me,direct,0)==='op')AI.aimA=direct+(Math.random()-.5)*L(.4,.12,.03);
+    else if(CpuMode.level>0){const n=L(0,24,48),maxB=L(0,1,3);let bd=9;
+      for(let k=0;k<n;k++){const a=me.a+k/n*Math.PI*2;if(simShot(me,a,maxB)==='op'){const d=Math.abs(wrapA(a-me.a));if(d<bd){bd=d;AI.aimA=a}}}}
+    if(AI.pathT<=0){AI.pathT=.5;let tg=op;
+      if(CpuMode.level>0)for(const it of items)if(Math.hypot(it.x-me.x,it.y-me.y)<Math.hypot(tg.x-me.x,tg.y-me.y)*.8)tg=it;
+      AI.path=bfsPath(me,tg.x,tg.y)}
+  }
+  if(AI.fire<=0){
+    if(AI.aimA!==null&&CpuMode.level>0&&Math.abs(wrapA(AI.aimA-me.a))<.03)me.a=AI.aimA; // settle the last hair of aim
+    const r=simShot(me,me.a,L(0,1,3));
+    if(r==='op'||(CpuMode.level===0&&AI.aimA!==null&&Math.abs(wrapA(AI.aimA-me.a))<.25&&Math.random()<.4)){fire(me);AI.fire=L(1,.5,.28)}
+    else AI.fire=.06;
+  }
+  let want,drive=1;
+  if(AI.dodge>0){AI.dodge-=dt;want=AI.dodgeA}
+  else if(AI.aimA!==null){want=AI.aimA;drive=0}
+  else{while(AI.path.length&&Math.hypot(AI.path[0][0]-me.x,AI.path[0][1]-me.y)<26)AI.path.shift();
+    want=AI.path.length?Math.atan2(AI.path[0][1]-me.y,AI.path[0][0]-me.x):Math.atan2(op.y-me.y,op.x-me.x)}
+  const d=wrapA(want-me.a);
+  return{turn:Math.max(-1,Math.min(1,d*2.5)),drive:drive&&Math.abs(d)<.9?1:0};
+}
 function moveTank(t,dt){
   const ax=Arcade.axis(t.i);
   let turn=ax.x,drive=-ax.y;
@@ -245,6 +314,7 @@ function moveTank(t,dt){
     const d=((Math.atan2(sk.y,sk.x)-t.a)%(Math.PI*2)+Math.PI*3)%(Math.PI*2)-Math.PI;
     turn=Math.max(-1,Math.min(1,d*2.5));drive=Math.abs(d)<1.1?Math.min(1,Math.hypot(sk.x,sk.y)*1.3):0;
   }
+  if(CpuMode.on&&t.i===1){const c=cpuTank(t,dt);turn=c.turn;drive=c.drive}
   const sp=(t.turbo>0?1.55:1);
   t.a+=turn*3.3*dt*(t.turbo>0?1.25:1);
   const v=drive*(drive>0?200:150)*sp;
@@ -329,7 +399,7 @@ function postUpdate(dt){
 }
 function showEnd(){
   state='end';const w=TK[0].score>TK[1].score?0:1;
-  const t=$('endTitle');t.textContent=`PLAYER ${w+1} WIN!`;t.style.color=COL[w];t.style.textShadow=`0 0 3cqw ${COL[w]}`;
+  const t=$('endTitle');t.textContent=CpuMode.winText(w);t.style.color=COL[w];t.style.textShadow=`0 0 3cqw ${COL[w]}`;
   $('endScore').textContent=`${TK[0].score} - ${TK[1].score}`;ready2.reset();show('ovEnd');Arcade.fanfare();
 }
 
@@ -357,7 +427,7 @@ function drawTank(t){
   if(t.shield>0){const a=t.shield<2?(Math.sin(time*25)>0?.7:.2):.7;ctx.strokeStyle=`rgba(140,255,255,${a})`;ctx.lineWidth=3;ctx.shadowColor='#8ff';ctx.shadowBlur=14;ctx.beginPath();ctx.arc(t.x,t.y,R+9,0,7);ctx.stroke();ctx.shadowBlur=0}
   if(t.turbo>0&&Math.random()<.5)parts.push({smoke:true,x:t.x-Math.cos(t.a)*20,y:t.y-Math.sin(t.a)*20,vx:0,vy:0,life:.4,max:.8,r:6});
   if(t.weapon){ctx.font='20px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(ICON[t.weapon],t.x,t.y-R-14)}
-  if(state==='countdown'){ctx.font='800 20px "M PLUS Rounded 1c"';ctx.fillStyle=COL[t.i];ctx.textAlign='center';ctx.fillText('P'+(t.i+1),t.x,t.y-R-16)}
+  if(state==='countdown'){ctx.font='800 20px "M PLUS Rounded 1c"';ctx.fillStyle=COL[t.i];ctx.textAlign='center';ctx.fillText(CpuMode.on?CpuMode.short(t.i):'P'+(t.i+1),t.x,t.y-R-16)}
 }
 function draw(){
   ctx.save();
@@ -402,7 +472,7 @@ function draw(){
   if(state==='roundResult'){
     ctx.fillStyle='rgba(0,0,0,.5)';ctx.fillRect(0,H/2-90,W,180);
     ctx.font='400 80px "Dela Gothic One"';
-    if(roundWinner>=0){ctx.fillStyle=COL[roundWinner];ctx.fillText(`P${roundWinner+1} がラウンド獲得!`,W/2,H/2-10)}
+    if(roundWinner>=0){ctx.fillStyle=COL[roundWinner];ctx.fillText(`${CpuMode.short(roundWinner)} がラウンド獲得!`,W/2,H/2-10)}
     else{ctx.fillStyle='#fff';ctx.fillText('相打ち!',W/2,H/2-10)}
     ctx.font='800 26px "M PLUS Rounded 1c"';ctx.fillStyle='#eee';ctx.fillText(`${TK[0].score}  -  ${TK[1].score}`,W/2,H/2+58);
   }
@@ -417,6 +487,7 @@ $('resumeBtn').onclick=togglePause;$('quitBtn').onclick=toTitle;$('titleBtn').on
 $('againBtn').onclick=()=>{Arcade.unlock();startMatch()};$('startBtn').onclick=()=>{Arcade.unlock();startMatch()};
 document.querySelectorAll('#segWin button').forEach(b=>b.onclick=()=>{winTarget=+b.dataset.v;document.querySelectorAll('#segWin button').forEach(x=>x.setAttribute('aria-pressed',x===b));paintPips()});
 paintPips();pickMap();TK.forEach(t=>t.alive=false);
+CpuMode.mount('tanks',$('segWin').parentNode,()=>{ready.reset();ready2.reset()});
 Arcade.touch([{pad:'stick',act:'発射'},{pad:'stick',act:'発射'}],{note:'スマホは横向きで。スティックを倒した方向に戦車が進みます'});
 Arcade.loop(dt=>{if(state!=='paused'){update(dt);postUpdate(dt)}draw()});
 </script>

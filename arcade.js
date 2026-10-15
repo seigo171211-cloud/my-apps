@@ -9,7 +9,9 @@ const Arcade=(()=>{
   const ALL=new Set(KEYS.flatMap(k=>Object.values(k).flat()));
   const held=new Set();
   const h={press(){},release(){},pause(){},key(){},blur(){}};
-  const isHeld=(p,a)=>KEYS[p][a].some(c=>held.has(c));
+  // CPU mode (cpu.js): P2 belongs to the CPU, and P1 may use either key set.
+  const cpuOn=()=>typeof CpuMode!=='undefined'&&CpuMode.on;
+  const isHeld=(p,a)=>cpuOn()?(p===0&&(KEYS[0][a].some(c=>held.has(c))||KEYS[1][a].some(c=>held.has(c)))):KEYS[p][a].some(c=>held.has(c));
   const axis=p=>({x:(isHeld(p,'right')?1:0)-(isHeld(p,'left')?1:0),y:(isHeld(p,'down')?1:0)-(isHeld(p,'up')?1:0)});
   function who(code){for(let p=0;p<2;p++)for(const a in KEYS[p])if(KEYS[p][a].includes(code))return[p,a];return null}
   addEventListener('keydown',e=>{
@@ -21,9 +23,9 @@ const Arcade=(()=>{
     if(e.code==='Escape'||e.code==='KeyP'){h.pause();return}
     if(e.code==='KeyM'){toggleMute();return}
     const w=who(e.code);
-    if(w)h.press(w[0],w[1]);else h.key(e.code);
+    if(w)h.press(w[0]&&!cpuOn()?1:0,w[1]);else h.key(e.code);
   });
-  addEventListener('keyup',e=>{held.delete(e.code);const w=who(e.code);if(w)h.release(w[0],w[1])});
+  addEventListener('keyup',e=>{held.delete(e.code);const w=who(e.code);if(w)h.release(w[0]&&!cpuOn()?1:0,w[1])});
   addEventListener('blur',()=>{held.clear();h.blur()});
 
   // ---- sound (tiny synth, no assets) ----
@@ -59,11 +61,11 @@ const Arcade=(()=>{
   function readyCheck(ids,onAll){
     const r=[false,false];
     const label=p=>typeof TouchPad!=='undefined'&&TouchPad.isTouch?'ボタンを押して準備OK':(p?'Enter':'F')+' を押して準備OK';
-    function paint(){ids.forEach((id,p)=>{const el=$(id);if(!el)return;el.classList.toggle('on',r[p]);el.textContent=r[p]?'準備OK ✓':label(p)})}
+    function paint(){ids.forEach((id,p)=>{const el=$(id);if(!el)return;el.classList.toggle('on',r[p]);el.textContent=r[p]?(p&&cpuOn()?'CPU 準備OK ✓':'準備OK ✓'):label(p)})}
     paint();
     return{
-      press(p){if(r[p])return;r[p]=true;tone(p?660:520,.08,'square',.1);paint();if(r[0]&&r[1])setTimeout(()=>{if(r[0]&&r[1]){r[0]=r[1]=false;paint();onAll()}},260)},
-      reset(){r[0]=r[1]=false;paint()},
+      press(p){if(r[p])return;r[p]=true;tone(p?660:520,.08,'square',.1);paint();if(r[0]&&r[1])setTimeout(()=>{if(r[0]&&r[1]){r[0]=false;r[1]=cpuOn();paint();onAll()}},260)},
+      reset(){r[0]=false;r[1]=cpuOn();paint()},
     };
   }
 
