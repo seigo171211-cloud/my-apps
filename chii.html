@@ -154,19 +154,19 @@ kbd { font-family: var(--font-body); border: 1px solid color-mix(in srgb, var(--
   const W = 380, H = 580;
   const GROUND = H - 46;          // ちーちゃん's feet
   const DURATION = 60;            // seconds of walk home
-  const DRAIN = 3.2;              // げんき lost per second
-  const FEVER_TIME = 6;
+  const DRAIN = 4.4;              // げんき lost per second
+  const FEVER_TIME = 4;
 
   // ---- Items ----
   const ITEMS = {
-    onigiri: { good: true,  r: 17, pts: 10, genki: 9,  say: ['おいし〜', 'もぐもぐ', 'ツナマヨだ！'] },
-    purin:   { good: true,  r: 16, pts: 15, genki: 11, say: ['しあわせ〜', 'ぷるぷる', 'ごほうび！'] },
-    tea:     { good: true,  r: 16, pts: 10, genki: 18, say: ['ほっ…', 'あったか〜い', 'しみる〜'] },
-    star:    { good: true,  r: 12, pts: 30, genki: 4,  say: ['きらきら！', 'ラッキー'] },
-    heart:   { good: true,  r: 17, pts: 50, genki: 25, say: ['ぎゅ〜っ！', 'おつかれさまって言われた！'] },
-    mail:    { good: false, r: 17, pts: 0,  genki: -16, say: ['またメール…', 'ひぃ', '見なかったことに…'] },
-    clock:   { good: false, r: 17, pts: 0,  genki: -20, say: ['あしたも早い…', 'ねむい…'] },
-    papers:  { good: false, r: 21, pts: 0,  genki: -26, say: ['残業…？', 'うぅ…', 'もう帰る！'] },
+    onigiri: { good: true,  r: 17, pts: 10, genki: 7,  say: ['おいし〜', 'もぐもぐ', 'ツナマヨだ！'] },
+    purin:   { good: true,  r: 16, pts: 15, genki: 8, say: ['しあわせ〜', 'ぷるぷる', 'ごほうび！'] },
+    tea:     { good: true,  r: 16, pts: 10, genki: 13, say: ['ほっ…', 'あったか〜い', 'しみる〜'] },
+    star:    { good: true,  r: 12, pts: 30, genki: 3,  say: ['きらきら！', 'ラッキー'] },
+    heart:   { good: true,  r: 17, pts: 50, genki: 20, say: ['ぎゅ〜っ！', 'おつかれさまって言われた！'] },
+    mail:    { good: false, r: 17, pts: 0,  genki: -22, say: ['またメール…', 'ひぃ', '見なかったことに…'] },
+    clock:   { good: false, r: 17, pts: 0,  genki: -28, say: ['あしたも早い…', 'ねむい…'] },
+    papers:  { good: false, r: 21, pts: 0,  genki: -36, say: ['残業…？', 'うぅ…', 'もう帰る！'] },
   };
 
   const cv = document.getElementById('game');
@@ -260,7 +260,7 @@ kbd { font-family: var(--font-body); border: 1px solid color-mix(in srgb, var(--
     if (isBest) { best = score; $best.textContent = best; try { localStorage.setItem('chii-best', best); } catch (e) {} }
     let rank, msg;
     if (!cleared) {
-      rank = `おうちまで あと${Math.ceil(100 - time / DURATION * 100)}%`;
+      rank = `${Math.floor(time)}秒がんばった（おうちまで あと${Math.ceil(100 - time / DURATION * 100)}%）`;
       msg = 'ちーちゃん、電池切れ…。こんな日もあるよ。お茶をのんでもう一回！';
     } else if (score < 500) {
       rank = 'なんとか帰宅'; msg = '今日はシャワーでさっと寝よう。おつかれさま。';
@@ -292,21 +292,21 @@ kbd { font-family: var(--font-body); border: 1px solid color-mix(in srgb, var(--
     let type;
     if (fever > 0) type = Math.random() < .35 ? 'star' : Math.random() < .5 ? 'purin' : 'onigiri';
     else {
-      const badChance = .3 + p * .22;
+      const badChance = .42 + p * .3;
       const r = Math.random();
       if (r < badChance) {
         const b = Math.random();
         type = b < .45 ? 'mail' : b < .75 + p * .05 ? 'clock' : 'papers';
       } else {
         const g = Math.random();
-        type = g < .05 ? 'heart' : g < .2 ? 'star' : g < .45 ? 'tea' : g < .72 ? 'onigiri' : 'purin';
+        type = g < .03 ? 'heart' : g < .2 ? 'star' : g < .45 ? 'tea' : g < .72 ? 'onigiri' : 'purin';
       }
     }
     const def = ITEMS[type];
-    const speed = 140 + p * 150 + Math.random() * 60 + (type === 'star' ? 70 : 0);
+    const speed = 190 + p * 260 + Math.random() * 80 + (type === 'star' ? 70 : 0);
     items.push({
       type, x: def.r + 8 + Math.random() * (W - 2 * def.r - 16), y: -def.r,
-      vy: speed, sway: type === 'mail' ? 50 + p * 40 : type === 'heart' ? 30 : 0,
+      vy: speed, sway: type === 'mail' ? 70 + p * 60 : type === 'heart' ? 30 : 0,
       ph: Math.random() * 6, rot: 0,
     });
   }
@@ -359,14 +359,14 @@ kbd { font-family: var(--font-body); border: 1px solid color-mix(in srgb, var(--
     fever = Math.max(0, fever - dt);
     shake = Math.max(0, shake - dt);
     if (chii.moodT > 0) { chii.moodT -= dt; if (chii.moodT <= 0) chii.mood = 'normal'; }
-    genki -= DRAIN * (1 + time / DURATION * .5) * (fever > 0 ? 0 : 1) * dt;
+    genki -= DRAIN * (1 + time / DURATION) * (fever > 0 ? .3 : 1) * dt;
 
     // Movement: keys push the target, pointer sets it directly.
     const kx = (keys.has('ArrowRight') || keys.has('KeyD') ? 1 : 0) - (keys.has('ArrowLeft') || keys.has('KeyA') ? 1 : 0);
     if (kx) chii.target = chii.x + kx * 60;
     chii.target = Math.max(26, Math.min(W - 26, chii.target));
     const dx = chii.target - chii.x;
-    const maxV = 520;
+    const maxV = 420;
     chii.vx = Math.max(-maxV, Math.min(maxV, dx * 12));
     chii.x += chii.vx * dt;
 
@@ -375,7 +375,7 @@ kbd { font-family: var(--font-body); border: 1px solid color-mix(in srgb, var(--
     if (spawnT <= 0 && time < DURATION - 1.2) {
       spawn();
       const p = time / DURATION;
-      spawnT = (fever > 0 ? .28 : .85 - p * .42) * (.75 + Math.random() * .5);
+      spawnT = (fever > 0 ? .3 : .62 - p * .32) * (.75 + Math.random() * .5);
     }
 
     // Items
