@@ -1,0 +1,707 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ちーちゃんおつかれ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;800&family=Zen+Maru+Gothic:wght@500;700&display=swap">
+<style>
+/* One-screen catch game: ちーちゃん walks home after work; catch the treats, dodge the work stuff. */
+:root {
+  --night: #1c1a33;
+  --night-2: #2c2650;
+  --ink: #fbf1ea;
+  --muted: #b4a9c9;
+  --pink: #ff8fb1;
+  --lamp: #ffd27a;
+  --leaf: #7fd6a8;
+  --danger: #ff6b6b;
+  --font-display: "M PLUS Rounded 1c", "Hiragino Maru Gothic ProN", sans-serif;
+  --font-body: "Zen Maru Gothic", "Hiragino Maru Gothic ProN", "Yu Gothic", sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: radial-gradient(120% 70% at 50% -10%, var(--night-2), var(--night) 60%);
+  background-color: var(--night);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-weight: 500;
+  overflow: hidden;
+  -webkit-user-select: none; user-select: none;
+  -webkit-touch-callout: none;
+  touch-action: none;
+  overscroll-behavior: none;
+}
+.app {
+  height: 100%;
+  display: flex; flex-direction: column; align-items: center;
+  gap: 8px;
+  padding-inline: 16px;
+  padding-block: max(10px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-bottom));
+}
+header, .meters, footer { width: 100%; max-width: 420px; }
+header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+h1 {
+  font-family: var(--font-display); font-weight: 800;
+  font-size: 1.3rem; line-height: 1.1; margin: 0; color: var(--pink);
+}
+h1 a { color: inherit; text-decoration: none; }
+h1 small { display: block; font-family: var(--font-body); font-size: .68rem; color: var(--muted); letter-spacing: .08em; font-weight: 500; margin-top: 3px; }
+.stats { display: flex; gap: 14px; }
+.stat { display: flex; flex-direction: column; align-items: flex-end; }
+.stat .label { font-size: .65rem; color: var(--muted); letter-spacing: .12em; }
+.stat .value { font-family: var(--font-display); font-weight: 800; font-size: 1.25rem; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.meters { display: grid; grid-template-columns: auto 1fr; gap: 5px 10px; align-items: center; font-size: .7rem; color: var(--muted); }
+.bar { height: 10px; border-radius: 999px; background: rgba(255,255,255,.08); overflow: hidden; }
+.bar i { display: block; height: 100%; width: 100%; border-radius: inherit; transition: width .15s, background .3s; }
+#genkiBar { background: linear-gradient(90deg, var(--pink), var(--lamp)); }
+#genkiBar.low { background: var(--danger); }
+#homeBar { background: var(--leaf); width: 0; }
+.stage { position: relative; flex: 1 1 auto; min-height: 0; width: 100%; display: flex; justify-content: center; align-items: flex-start; }
+#game { display: block; border-radius: 10px; touch-action: none; }
+.overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 16px; }
+.card {
+  background: color-mix(in srgb, var(--night) 90%, transparent);
+  border: 1px solid color-mix(in srgb, var(--pink) 45%, transparent);
+  border-radius: 16px; padding: 22px 24px; text-align: center; max-width: 310px;
+  display: flex; flex-direction: column; gap: 10px; align-items: center;
+}
+.card h2 { font-family: var(--font-display); font-weight: 800; margin: 0; font-size: 1.5rem; color: var(--pink); }
+.card p { margin: 0; color: var(--muted); line-height: 1.65; font-size: .88rem; }
+.card .big { font-family: var(--font-display); font-weight: 800; font-size: 2.3rem; color: var(--ink); font-variant-numeric: tabular-nums; line-height: 1; }
+.card .rank { color: var(--lamp); font-weight: 700; font-size: 1rem; }
+.legend { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 14px; font-size: .78rem; text-align: left; color: var(--ink); }
+.legend b { font-weight: 700; font-size: .7rem; letter-spacing: .1em; }
+.legend .ok { color: var(--leaf); } .legend .ng { color: var(--danger); }
+button {
+  font-family: var(--font-body); font-weight: 700; font-size: .95rem;
+  background: var(--pink); color: var(--night); border: 0; border-radius: 999px;
+  padding: 10px 24px; cursor: pointer;
+}
+button.ghost { background: transparent; color: var(--muted); border: 1px solid color-mix(in srgb, var(--muted) 50%, transparent); padding: 5px 13px; font-size: .78rem; }
+button:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+footer { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; align-items: center; font-size: .72rem; color: var(--muted); }
+footer a { color: var(--muted); }
+kbd { font-family: var(--font-body); border: 1px solid color-mix(in srgb, var(--muted) 50%, transparent); border-radius: 4px; padding: 0 5px; font-size: .7rem; }
+@media (max-width: 420px) { h1 { font-size: 1.1rem; } .stat .value { font-size: 1.05rem; } .stats { gap: 10px; } }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1><a href="/">ちーちゃんおつかれ</a><small>帰り道でごほうびをキャッチ</small></h1>
+    <div class="stats">
+      <div class="stat"><span class="label">スコア</span><span class="value" id="score">0</span></div>
+      <div class="stat"><span class="label">ベスト</span><span class="value" id="best">0</span></div>
+    </div>
+  </header>
+  <div class="meters">
+    <span>げんき</span><div class="bar"><i id="genkiBar"></i></div>
+    <span>おうちまで</span><div class="bar"><i id="homeBar"></i></div>
+  </div>
+
+  <div class="stage" id="stage">
+    <canvas id="game"></canvas>
+    <div class="overlay" id="startOverlay">
+      <div class="card">
+        <h2>今日もおつかれ</h2>
+        <p>お仕事帰りのちーちゃん。<br>空から降ってくるごほうびをキャッチして、げんきなままおうちに帰ろう。</p>
+        <div class="legend">
+          <b class="ok">キャッチ</b><b class="ng">よける</b>
+          <span>おにぎり・プリン</span><span>しごとのメール</span>
+          <span>あったかいお茶</span><span>めざまし時計</span>
+          <span>星・ハート</span><span>残業の書類</span>
+        </div>
+        <p>ハートをとると「いやしタイム」！</p>
+        <button id="startBtn">かえろう</button>
+      </div>
+    </div>
+    <div class="overlay" id="pauseOverlay" hidden>
+      <div class="card">
+        <h2>ひとやすみ</h2>
+        <button id="resumeBtn">つづける</button>
+      </div>
+    </div>
+    <div class="overlay" id="endOverlay" hidden>
+      <div class="card">
+        <h2 id="endTitle">ただいま！</h2>
+        <div class="big" id="finalScore">0</div>
+        <p class="rank" id="endRank"></p>
+        <p id="endMsg"></p>
+        <button id="retryBtn">もう一回</button>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <span>ドラッグ / タッチで移動</span>
+    <span><kbd>←</kbd><kbd>→</kbd> 移動 <kbd>P</kbd> ひとやすみ</span>
+    <button class="ghost" id="muteBtn">音: ON</button>
+    <a href="/">もどる</a>
+  </footer>
+</div>
+
+<script>
+(() => {
+  'use strict';
+  // ---- World ----
+  const W = 380, H = 580;
+  const GROUND = H - 46;          // ちーちゃん's feet
+  const DURATION = 60;            // seconds of walk home
+  const DRAIN = 3.2;              // げんき lost per second
+  const FEVER_TIME = 6;
+
+  // ---- Items ----
+  const ITEMS = {
+    onigiri: { good: true,  r: 17, pts: 10, genki: 9,  say: ['おいし〜', 'もぐもぐ', 'ツナマヨだ！'] },
+    purin:   { good: true,  r: 16, pts: 15, genki: 11, say: ['しあわせ〜', 'ぷるぷる', 'ごほうび！'] },
+    tea:     { good: true,  r: 16, pts: 10, genki: 18, say: ['ほっ…', 'あったか〜い', 'しみる〜'] },
+    star:    { good: true,  r: 12, pts: 30, genki: 4,  say: ['きらきら！', 'ラッキー'] },
+    heart:   { good: true,  r: 17, pts: 50, genki: 25, say: ['ぎゅ〜っ！', 'おつかれさまって言われた！'] },
+    mail:    { good: false, r: 17, pts: 0,  genki: -16, say: ['またメール…', 'ひぃ', '見なかったことに…'] },
+    clock:   { good: false, r: 17, pts: 0,  genki: -20, say: ['あしたも早い…', 'ねむい…'] },
+    papers:  { good: false, r: 21, pts: 0,  genki: -26, say: ['残業…？', 'うぅ…', 'もう帰る！'] },
+  };
+
+  const cv = document.getElementById('game');
+  const ctx = cv.getContext('2d');
+  const stage = document.getElementById('stage');
+  const $ = id => document.getElementById(id);
+  const $score = $('score'), $best = $('best'), $genki = $('genkiBar'), $home = $('homeBar');
+
+  let state = 'title';
+  let chii, items, particles, popups, score, genki, time, spawnT, combo, fever, shake, endT, lastSay;
+  let best = 0, scale = 1, dpr = 1, clock = 0;
+  try { best = +localStorage.getItem('chii-best') || 0; } catch (e) {}
+  $best.textContent = best;
+
+  // ---- Scenery (fixed random layout so it scrolls seamlessly) ----
+  let seed = 7;
+  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const stars = Array.from({ length: 46 }, () => ({ x: rnd() * W, y: rnd() * 260, r: rnd() * 1.3 + .4, p: rnd() * 6 }));
+  const CITY_W = 760;
+  const buildings = [];
+  for (let x = 0; x < CITY_W;) {
+    const w = 40 + rnd() * 50, h = 70 + rnd() * 130;
+    const win = [];
+    for (let wy = 14; wy < h - 12; wy += 16) for (let wx = 8; wx < w - 10; wx += 13) if (rnd() < .32) win.push([wx, wy]);
+    buildings.push({ x, w, h, win });
+    x += w + 4 + rnd() * 10;
+  }
+  let cityX = 0, lampX = 0, walkPhase = 0;
+
+  function reset() {
+    chii = { x: W / 2, target: W / 2, vx: 0, mood: 'normal', moodT: 0, say: null };
+    items = []; particles = []; popups = [];
+    score = 0; genki = 100; time = 0; spawnT = 1.0; combo = 0; fever = 0; shake = 0; endT = 0; lastSay = 0;
+    updateHud();
+  }
+
+  function updateHud() {
+    $score.textContent = score;
+    $genki.style.width = Math.max(0, genki) + '%';
+    $genki.classList.toggle('low', genki < 30);
+    $home.style.width = Math.min(100, time / DURATION * 100) + '%';
+  }
+
+  // ---- Sound (tiny synth) ----
+  let AC = null, muted = false;
+  try { muted = localStorage.getItem('chii-muted') === '1'; } catch (e) {}
+  function unlock() { if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} } if (AC && AC.state === 'suspended') AC.resume(); }
+  function tone(f, d = .1, type = 'triangle', v = .12, slide = 1, delay = 0) {
+    if (muted || !AC) return;
+    const t = AC.currentTime + delay, o = AC.createOscillator(), g = AC.createGain();
+    o.type = type; o.frequency.setValueAtTime(f, t);
+    if (slide !== 1) o.frequency.exponentialRampToValueAtTime(Math.max(20, f * slide), t + d);
+    g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(.0008, t + d);
+    o.connect(g).connect(AC.destination); o.start(t); o.stop(t + d + .03);
+  }
+  const sfx = {
+    good: () => { tone(880, .08); tone(1320, .12, 'triangle', .1, 1, .06); },
+    star: () => [1047, 1319, 1568].forEach((f, i) => tone(f, .1, 'sine', .1, 1, i * .05)),
+    heart: () => [523, 659, 784, 1047, 1319].forEach((f, i) => tone(f, .16, 'triangle', .11, 1, i * .07)),
+    bad: () => { tone(220, .22, 'sawtooth', .08, .55); tone(160, .25, 'square', .05, .6, .05); },
+    clear: () => [523, 659, 784, 1047, 784, 1047].forEach((f, i) => tone(f, .22, 'triangle', .12, 1, i * .13)),
+    over: () => [392, 330, 262, 196].forEach((f, i) => tone(f, .3, 'triangle', .1, 1, i * .2)),
+  };
+  function paintMute() { $('muteBtn').textContent = muted ? '音: OFF' : '音: ON'; }
+  $('muteBtn').onclick = e => { unlock(); muted = !muted; try { localStorage.setItem('chii-muted', muted ? '1' : '0'); } catch (err) {} paintMute(); e.currentTarget.blur(); };
+  paintMute();
+
+  // ---- Game flow ----
+  function start() {
+    unlock(); reset(); state = 'play';
+    ['startOverlay', 'endOverlay', 'pauseOverlay'].forEach(id => $(id).hidden = true);
+    say('よし、かえろ！');
+  }
+  function pause() { if (state !== 'play') return; state = 'pause'; $('pauseOverlay').hidden = false; }
+  function resume() { if (state !== 'pause') return; state = 'play'; $('pauseOverlay').hidden = true; }
+
+  function finish(cleared) {
+    state = 'end'; endT = 0;
+    if (cleared) {
+      const bonus = Math.round(genki) * 5;
+      score += bonus; addPopup(chii.x, GROUND - 120, `げんきボーナス +${bonus}`, '#ffd27a');
+      chii.mood = 'happy'; chii.moodT = 99; say('ただいま〜！');
+      sfx.clear();
+    } else {
+      items = [];
+      chii.mood = 'tired'; chii.moodT = 99; say('もう…むり…');
+      sfx.over();
+    }
+    updateHud();
+    const isBest = score > best;
+    if (isBest) { best = score; $best.textContent = best; try { localStorage.setItem('chii-best', best); } catch (e) {} }
+    let rank, msg;
+    if (!cleared) {
+      rank = `おうちまで あと${Math.ceil(100 - time / DURATION * 100)}%`;
+      msg = 'ちーちゃん、電池切れ…。こんな日もあるよ。お茶をのんでもう一回！';
+    } else if (score < 500) {
+      rank = 'なんとか帰宅'; msg = '今日はシャワーでさっと寝よう。おつかれさま。';
+    } else if (score < 1000) {
+      rank = 'ほっこり帰宅'; msg = 'お風呂でゆっくりあったまろう。今日もえらかった！';
+    } else if (score < 1600) {
+      rank = 'ごきげん帰宅'; msg = 'ちーちゃん、鼻歌まじり。明日もがんばれそう！';
+    } else {
+      rank = 'さいこうの夜'; msg = 'ちーちゃん「ありがとう、ほんとにいやされた〜！」';
+    }
+    $('endTitle').textContent = cleared ? 'ただいま！' : 'ばたんきゅー';
+    $('finalScore').textContent = score;
+    $('endRank').textContent = rank + (isBest && score > 0 ? '（ベスト更新！）' : '');
+    $('endMsg').textContent = msg;
+    setTimeout(() => { if (state === 'end') $('endOverlay').hidden = false; }, 1200);
+  }
+
+  function say(text) { chii.say = { text, t: 1.6 }; }
+  function addPopup(x, y, text, color) { popups.push({ x, y, text, color, t: 1 }); }
+  function burst(x, y, color, n, spd) {
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * Math.PI * 2, s = spd * (.4 + Math.random() * .8);
+      particles.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s - 60, t: .7 + Math.random() * .4, color, r: 2 + Math.random() * 2.5 });
+    }
+  }
+
+  function spawn() {
+    const p = time / DURATION;
+    let type;
+    if (fever > 0) type = Math.random() < .35 ? 'star' : Math.random() < .5 ? 'purin' : 'onigiri';
+    else {
+      const badChance = .3 + p * .22;
+      const r = Math.random();
+      if (r < badChance) {
+        const b = Math.random();
+        type = b < .45 ? 'mail' : b < .75 + p * .05 ? 'clock' : 'papers';
+      } else {
+        const g = Math.random();
+        type = g < .05 ? 'heart' : g < .2 ? 'star' : g < .45 ? 'tea' : g < .72 ? 'onigiri' : 'purin';
+      }
+    }
+    const def = ITEMS[type];
+    const speed = 140 + p * 150 + Math.random() * 60 + (type === 'star' ? 70 : 0);
+    items.push({
+      type, x: def.r + 8 + Math.random() * (W - 2 * def.r - 16), y: -def.r,
+      vy: speed, sway: type === 'mail' ? 50 + p * 40 : type === 'heart' ? 30 : 0,
+      ph: Math.random() * 6, rot: 0,
+    });
+  }
+
+  function catchItem(it) {
+    const def = ITEMS[it.type];
+    if (def.good) {
+      combo++;
+      const mult = (1 + Math.min(4, Math.floor(combo / 5)) * .5) * (fever > 0 ? 2 : 1);
+      const pts = Math.round(def.pts * mult);
+      score += pts; genki = Math.min(100, genki + def.genki);
+      addPopup(it.x, it.y - 10, `+${pts}`, it.type === 'heart' ? '#ff8fb1' : '#ffd27a');
+      burst(it.x, it.y, it.type === 'heart' ? '#ff8fb1' : it.type === 'tea' ? '#7fd6a8' : '#ffd27a', it.type === 'heart' ? 22 : 10, 160);
+      chii.mood = 'happy'; chii.moodT = .6;
+      if (it.type === 'heart') { fever = FEVER_TIME; sfx.heart(); say(def.say[Math.floor(Math.random() * def.say.length)]); addPopup(W / 2, H * .38, 'いやしタイム！', '#ff8fb1'); }
+      else { it.type === 'star' ? sfx.star() : sfx.good(); }
+      if (combo > 0 && combo % 10 === 0) addPopup(chii.x, GROUND - 130, `${combo}コンボ！`, '#7fd6a8');
+    } else {
+      combo = 0;
+      genki += def.genki; shake = .3;
+      addPopup(it.x, it.y - 10, `げんき ${def.genki}`, '#ff6b6b');
+      burst(it.x, it.y, '#6c6589', 12, 140);
+      chii.mood = 'hurt'; chii.moodT = .7;
+      sfx.bad();
+    }
+    if (it.type !== 'heart' && time - lastSay > 2.2 && Math.random() < .55) { say(def.say[Math.floor(Math.random() * def.say.length)]); lastSay = time; }
+  }
+
+  // ---- Update ----
+  const keys = new Set();
+  function update(dt) {
+    clock += dt;
+    // Scenery and walking keep going on the title screen too; only stop when paused or after arriving.
+    const walking = state === 'title' || state === 'play';
+    if (walking) {
+      const spd = state === 'play' && fever > 0 ? 1.6 : 1;
+      cityX = (cityX + 14 * dt * spd) % CITY_W;
+      lampX = (lampX + 70 * dt * spd) % 210;
+      walkPhase += dt * 9 * spd;
+    }
+    for (const p of particles) { p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 300 * dt; p.t -= dt; }
+    particles = particles.filter(p => p.t > 0);
+    for (const p of popups) { p.y -= 40 * dt; p.t -= dt * .9; }
+    popups = popups.filter(p => p.t > 0);
+    if (chii.say) { chii.say.t -= dt; if (chii.say.t <= 0) chii.say = null; }
+    if (state === 'end') { endT += dt; return; }
+    if (state !== 'play') return;
+
+    time += dt;
+    fever = Math.max(0, fever - dt);
+    shake = Math.max(0, shake - dt);
+    if (chii.moodT > 0) { chii.moodT -= dt; if (chii.moodT <= 0) chii.mood = 'normal'; }
+    genki -= DRAIN * (1 + time / DURATION * .5) * (fever > 0 ? 0 : 1) * dt;
+
+    // Movement: keys push the target, pointer sets it directly.
+    const kx = (keys.has('ArrowRight') || keys.has('KeyD') ? 1 : 0) - (keys.has('ArrowLeft') || keys.has('KeyA') ? 1 : 0);
+    if (kx) chii.target = chii.x + kx * 60;
+    chii.target = Math.max(26, Math.min(W - 26, chii.target));
+    const dx = chii.target - chii.x;
+    const maxV = 520;
+    chii.vx = Math.max(-maxV, Math.min(maxV, dx * 12));
+    chii.x += chii.vx * dt;
+
+    // Spawning
+    spawnT -= dt;
+    if (spawnT <= 0 && time < DURATION - 1.2) {
+      spawn();
+      const p = time / DURATION;
+      spawnT = (fever > 0 ? .28 : .85 - p * .42) * (.75 + Math.random() * .5);
+    }
+
+    // Items
+    const cx = chii.x, cy = GROUND - 60;
+    for (const it of items) {
+      it.y += it.vy * dt;
+      it.ph += dt * 3;
+      if (it.sway) it.x = Math.max(16, Math.min(W - 16, it.x + Math.cos(it.ph) * it.sway * dt));
+      it.rot = Math.sin(it.ph) * .25;
+      const r = ITEMS[it.type].r;
+      if (!it.done && Math.abs(it.x - cx) < r + 24 && Math.abs(it.y - cy) < r + 30) { it.done = true; catchItem(it); }
+      if (it.y > GROUND + 10 && !it.done) {
+        it.done = true;
+        if (ITEMS[it.type].good) burst(it.x, GROUND, 'rgba(255,255,255,.5)', 4, 60);
+      }
+    }
+    items = items.filter(it => !it.done);
+
+    if (genki <= 0) { genki = 0; finish(false); }
+    else if (time >= DURATION) { time = DURATION; items = []; finish(true); }
+    updateHud();
+  }
+
+  // ---- Drawing ----
+  function rr(x, y, w, h, r) { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); }
+
+  function drawSky() {
+    const g = ctx.createLinearGradient(0, 0, 0, GROUND);
+    g.addColorStop(0, '#15132b'); g.addColorStop(.55, '#2e2753'); g.addColorStop(1, '#5d4470');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    for (const s of stars) {
+      ctx.globalAlpha = .45 + .45 * Math.sin(clock * 1.7 + s.p);
+      ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    // moon
+    const mg = ctx.createRadialGradient(312, 78, 10, 312, 78, 70);
+    mg.addColorStop(0, 'rgba(255,240,200,.35)'); mg.addColorStop(1, 'rgba(255,240,200,0)');
+    ctx.fillStyle = mg; ctx.fillRect(240, 8, 150, 150);
+    ctx.fillStyle = '#fff3cf'; ctx.beginPath(); ctx.arc(312, 78, 24, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#2e2753'; ctx.beginPath(); ctx.arc(322, 70, 21, 0, Math.PI * 2); ctx.fill();
+  }
+
+  function drawCity() {
+    for (let k = 0; k < 2; k++) {
+      const ox = -cityX + k * CITY_W;
+      for (const b of buildings) {
+        const x = ox + b.x;
+        if (x > W || x + b.w < 0) continue;
+        const y = GROUND - b.h;
+        ctx.fillStyle = '#231e3d'; ctx.fillRect(x, y, b.w, b.h);
+        ctx.fillStyle = 'rgba(255,210,122,.75)';
+        for (const [wx, wy] of b.win) ctx.fillRect(x + wx, y + wy, 6, 7);
+      }
+    }
+  }
+
+  function drawStreet() {
+    // lamps
+    for (let x = -lampX + 30; x < W + 210; x += 210) {
+      const lg = ctx.createRadialGradient(x + 14, GROUND - 120, 4, x + 14, GROUND - 60, 110);
+      lg.addColorStop(0, 'rgba(255,210,122,.32)'); lg.addColorStop(1, 'rgba(255,210,122,0)');
+      ctx.fillStyle = lg; ctx.fillRect(x - 100, GROUND - 230, 230, 240);
+      ctx.strokeStyle = '#3b3459'; ctx.lineWidth = 4; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(x, GROUND); ctx.lineTo(x, GROUND - 120); ctx.quadraticCurveTo(x, GROUND - 130, x + 12, GROUND - 128); ctx.stroke();
+      ctx.fillStyle = '#ffe2a3'; ctx.beginPath(); ctx.ellipse(x + 15, GROUND - 124, 7, 4, 0, 0, Math.PI * 2); ctx.fill();
+    }
+    // sidewalk
+    ctx.fillStyle = '#2a2542'; ctx.fillRect(0, GROUND, W, H - GROUND);
+    ctx.fillStyle = '#3a3358'; ctx.fillRect(0, GROUND, W, 4);
+    ctx.strokeStyle = 'rgba(255,255,255,.07)'; ctx.lineWidth = 2;
+    for (let x = -(lampX * 2 % 48); x < W; x += 48) { ctx.beginPath(); ctx.moveTo(x, GROUND + 4); ctx.lineTo(x - 10, H); ctx.stroke(); }
+  }
+
+  function drawHouse() {
+    const p = time / DURATION;
+    if (p < .86) return;
+    const t = Math.min(1, (p - .86) / .14);
+    const x = W + 20 - t * 150, y = GROUND;
+    ctx.fillStyle = '#463b6b'; ctx.fillRect(x, y - 80, 110, 80);
+    ctx.fillStyle = '#ff8fb1';
+    ctx.beginPath(); ctx.moveTo(x - 12, y - 78); ctx.lineTo(x + 55, y - 130); ctx.lineTo(x + 122, y - 78); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#ffd27a'; ctx.fillRect(x + 16, y - 62, 26, 22);
+    ctx.fillStyle = '#2a2542'; ctx.fillRect(x + 28, y - 62, 2, 22); ctx.fillRect(x + 16, y - 52, 26, 2);
+    ctx.fillStyle = '#8a5a3c'; rr(x + 64, y - 52, 26, 52, [8, 8, 0, 0]); ctx.fill();
+    ctx.fillStyle = '#ffd27a'; ctx.beginPath(); ctx.arc(x + 84, y - 26, 2, 0, Math.PI * 2); ctx.fill();
+  }
+
+  function drawChii() {
+    const x = chii.x, mood = chii.mood;
+    const walking = state === 'play' || state === 'title';
+    const bob = walking ? Math.abs(Math.sin(walkPhase)) * 3 : 0;
+    const y = GROUND - bob;
+    const lean = Math.max(-.12, Math.min(.12, chii.vx / 3000));
+    ctx.save();
+    ctx.translate(x, GROUND); ctx.rotate(lean); ctx.translate(-x, -GROUND);
+    // shadow
+    ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.beginPath(); ctx.ellipse(x, GROUND + 3, 22, 5, 0, 0, Math.PI * 2); ctx.fill();
+    // legs
+    const sw = walking ? Math.sin(walkPhase) * 6 : 0;
+    ctx.strokeStyle = '#2b2440'; ctx.lineWidth = 5; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(x - 6, y - 14); ctx.lineTo(x - 6 + sw, y - 1); ctx.moveTo(x + 6, y - 14); ctx.lineTo(x + 6 - sw, y - 1); ctx.stroke();
+    // arms (raised when happy)
+    ctx.strokeStyle = '#e8c39a'; ctx.lineWidth = 6;
+    ctx.beginPath();
+    if (mood === 'happy') { ctx.moveTo(x - 14, y - 40); ctx.lineTo(x - 26, y - 62); ctx.moveTo(x + 14, y - 40); ctx.lineTo(x + 26, y - 62); }
+    else { ctx.moveTo(x - 15, y - 40); ctx.lineTo(x - 20 - sw * .3, y - 22); ctx.moveTo(x + 15, y - 40); ctx.lineTo(x + 20 + sw * .3, y - 22); }
+    ctx.stroke();
+    // coat
+    ctx.fillStyle = '#e8c39a'; rr(x - 16, y - 48, 32, 36, [10, 10, 6, 6]); ctx.fill();
+    ctx.fillStyle = '#d4a979'; ctx.fillRect(x - 1, y - 44, 2, 30);
+    ctx.fillStyle = '#ff8fb1'; rr(x - 9, y - 50, 18, 6, 3); ctx.fill(); // scarf
+    // bag
+    ctx.fillStyle = '#6e5a9e'; rr(x + 14, y - 30, 14, 12, 3); ctx.fill();
+    // head: back hair, hair cap, face
+    const hy = y - 68;
+    ctx.fillStyle = '#4a2f27';
+    rr(x - 24, hy - 4, 10, 24, 5); ctx.fill(); rr(x + 14, hy - 4, 10, 24, 5); ctx.fill();
+    ctx.beginPath(); ctx.arc(x, hy, 24, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#4a2f27'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(x + 2, hy - 23); ctx.quadraticCurveTo(x + 6, hy - 36, x + 14, hy - 32); ctx.stroke(); // ahoge
+    ctx.fillStyle = '#ffe3d1'; ctx.beginPath(); ctx.ellipse(x, hy + 5, 19, 16, 0, 0, Math.PI * 2); ctx.fill();
+    // face
+    const tired = mood === 'tired' || (mood === 'normal' && state === 'play' && genki < 30);
+    ctx.fillStyle = 'rgba(255,120,150,.45)';
+    ctx.beginPath(); ctx.ellipse(x - 12, hy + 10, 4.5, 3, 0, 0, Math.PI * 2); ctx.ellipse(x + 12, hy + 10, 4.5, 3, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#2b2440'; ctx.fillStyle = '#2b2440'; ctx.lineWidth = 2;
+    const ex = 7, ey = hy + 3;
+    if (mood === 'happy') {
+      ctx.beginPath(); ctx.arc(x - ex, ey + 2, 3.5, Math.PI * 1.15, Math.PI * 1.85); ctx.stroke();
+      ctx.beginPath(); ctx.arc(x + ex, ey + 2, 3.5, Math.PI * 1.15, Math.PI * 1.85); ctx.stroke();
+      ctx.fillStyle = '#d9576f'; ctx.beginPath(); ctx.arc(x, hy + 11, 4, 0, Math.PI); ctx.fill();
+    } else if (mood === 'hurt') {
+      ctx.beginPath();
+      ctx.moveTo(x - ex - 3, ey - 3); ctx.lineTo(x - ex + 2, ey); ctx.lineTo(x - ex - 3, ey + 3);
+      ctx.moveTo(x + ex + 3, ey - 3); ctx.lineTo(x + ex - 2, ey); ctx.lineTo(x + ex + 3, ey + 3);
+      ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x - 4, hy + 12); ctx.quadraticCurveTo(x - 2, hy + 9, x, hy + 12); ctx.quadraticCurveTo(x + 2, hy + 15, x + 4, hy + 12); ctx.stroke();
+    } else if (tired) {
+      ctx.beginPath(); ctx.moveTo(x - ex - 3, ey + 1); ctx.lineTo(x - ex + 3, ey + 1); ctx.moveTo(x + ex - 3, ey + 1); ctx.lineTo(x + ex + 3, ey + 1); ctx.stroke();
+      ctx.beginPath(); ctx.ellipse(x, hy + 12, 2, 2.5, 0, 0, Math.PI * 2); ctx.stroke();
+      ctx.fillStyle = '#9fd3ff'; ctx.beginPath(); ctx.moveTo(x + 20, hy - 8); ctx.quadraticCurveTo(x + 25, hy - 1, x + 20, hy + 1); ctx.quadraticCurveTo(x + 15, hy - 1, x + 20, hy - 8); ctx.fill();
+    } else {
+      ctx.beginPath(); ctx.ellipse(x - ex, ey, 2.2, 3, 0, 0, Math.PI * 2); ctx.ellipse(x + ex, ey, 2.2, 3, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(x, hy + 9, 3, .15 * Math.PI, .85 * Math.PI); ctx.stroke();
+    }
+    ctx.restore();
+    if (fever > 0 && state === 'play') {
+      ctx.globalAlpha = .5 + .3 * Math.sin(clock * 10);
+      drawHeart(x - 30, GROUND - 100 - (clock * 30 % 20), 6); drawHeart(x + 30, GROUND - 95 - ((clock * 30 + 10) % 20), 5);
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  function drawBubble() {
+    if (!chii.say) return;
+    const a = Math.min(1, chii.say.t * 4);
+    ctx.globalAlpha = a;
+    ctx.font = '700 14px "Zen Maru Gothic", sans-serif';
+    const tw = ctx.measureText(chii.say.text).width;
+    const bw = tw + 22, bh = 28;
+    const bx = Math.max(6, Math.min(W - bw - 6, chii.x - bw / 2)), by = GROUND - 140;
+    ctx.fillStyle = '#fbf1ea';
+    rr(bx, by, bw, bh, 14); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(chii.x - 6, by + bh - 1); ctx.lineTo(chii.x, by + bh + 8); ctx.lineTo(chii.x + 6, by + bh - 1); ctx.fill();
+    ctx.fillStyle = '#2b2440'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(chii.say.text, bx + bw / 2, by + bh / 2 + 1);
+    ctx.globalAlpha = 1;
+  }
+
+  function drawHeart(x, y, s) {
+    ctx.fillStyle = '#ff8fb1';
+    ctx.beginPath();
+    ctx.moveTo(x, y + s * 1.1);
+    ctx.bezierCurveTo(x - s * 2.2, y - s * .2, x - s * 1.1, y - s * 1.9, x, y - s * .7);
+    ctx.bezierCurveTo(x + s * 1.1, y - s * 1.9, x + s * 2.2, y - s * .2, x, y + s * 1.1);
+    ctx.fill();
+  }
+
+  function drawItem(it) {
+    ctx.save();
+    ctx.translate(it.x, it.y); ctx.rotate(it.rot);
+    const good = ITEMS[it.type].good;
+    // soft halo so good / bad read at a glance
+    ctx.fillStyle = good ? 'rgba(255,210,122,.16)' : 'rgba(255,90,90,.16)';
+    ctx.beginPath(); ctx.arc(0, 0, ITEMS[it.type].r + 7, 0, Math.PI * 2); ctx.fill();
+    switch (it.type) {
+      case 'onigiri':
+        ctx.fillStyle = '#fffaf0'; ctx.beginPath(); ctx.moveTo(0, -17); ctx.quadraticCurveTo(4, -17, 17, 9); ctx.quadraticCurveTo(19, 15, 12, 15); ctx.lineTo(-12, 15); ctx.quadraticCurveTo(-19, 15, -17, 9); ctx.quadraticCurveTo(-4, -17, 0, -17); ctx.fill();
+        ctx.fillStyle = '#1f3a2b'; ctx.fillRect(-8, 3, 16, 12);
+        break;
+      case 'purin':
+        ctx.fillStyle = '#ffd96a'; ctx.beginPath(); ctx.moveTo(-10, -10); ctx.lineTo(10, -10); ctx.lineTo(16, 12); ctx.lineTo(-16, 12); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = '#8a4a1c'; ctx.beginPath(); ctx.ellipse(0, -10, 10, 4, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.ellipse(0, 13, 19, 3.5, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#d93d4a'; ctx.beginPath(); ctx.arc(0, -15, 3.5, 0, Math.PI * 2); ctx.fill();
+        break;
+      case 'tea':
+        ctx.strokeStyle = 'rgba(255,255,255,.6)'; ctx.lineWidth = 2;
+        for (const sx of [-5, 4]) { ctx.beginPath(); ctx.moveTo(sx, -12); ctx.quadraticCurveTo(sx + 5, -17 - Math.sin(it.ph * 2) * 2, sx, -22); ctx.stroke(); }
+        ctx.fillStyle = '#5fae7e'; rr(-12, -9, 24, 23, [3, 3, 9, 9]); ctx.fill();
+        ctx.fillStyle = '#b8e6c4'; ctx.fillRect(-12, -9, 24, 4);
+        ctx.fillStyle = '#3f7d58'; ctx.fillRect(-12, 2, 24, 3);
+        break;
+      case 'star': {
+        ctx.fillStyle = '#ffe27a'; ctx.beginPath();
+        for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? 5.5 : 13; ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r); }
+        ctx.closePath(); ctx.fill();
+        break;
+      }
+      case 'heart': {
+        const s = 8 + Math.sin(it.ph * 3) * .8;
+        drawHeart(0, 1, s);
+        ctx.fillStyle = '#fff'; ctx.font = '700 7px "Zen Maru Gothic", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText('おつ', 0, -1);
+        break;
+      }
+      case 'mail':
+        ctx.fillStyle = '#e9e6f2'; rr(-16, -11, 32, 22, 3); ctx.fill();
+        ctx.strokeStyle = '#8c86a3'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-15, -10); ctx.lineTo(0, 2); ctx.lineTo(15, -10); ctx.stroke();
+        ctx.fillStyle = '#ff4d4d'; ctx.beginPath(); ctx.arc(14, -11, 7, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#fff'; ctx.font = '800 10px "M PLUS Rounded 1c", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('!', 14, -10.5);
+        break;
+      case 'clock':
+        ctx.fillStyle = '#c9c4d9'; ctx.beginPath(); ctx.arc(-10, -12, 6, 0, Math.PI * 2); ctx.arc(10, -12, 6, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#e25c5c'; ctx.beginPath(); ctx.arc(0, 1, 15, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(0, 1, 11, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = '#2b2440'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, 1); ctx.lineTo(0, -6); ctx.moveTo(0, 1); ctx.lineTo(5, 3); ctx.stroke();
+        break;
+      case 'papers':
+        for (let i = 2; i >= 0; i--) { ctx.fillStyle = i ? '#cfcbe0' : '#f4f2fa'; ctx.fillRect(-15 + i * 3, -19 + i * 3, 28, 34); }
+        ctx.fillStyle = '#9a94b4'; for (let l = 0; l < 4; l++) ctx.fillRect(-11, -13 + l * 7, 20, 2);
+        ctx.fillStyle = '#e25c5c'; ctx.font = '800 9px "M PLUS Rounded 1c", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('至急', 0, 11);
+        break;
+    }
+    ctx.restore();
+  }
+
+  function draw() {
+    ctx.setTransform(scale * dpr, 0, 0, scale * dpr, 0, 0);
+    ctx.save();
+    if (shake > 0) ctx.translate((Math.random() - .5) * 8 * shake, (Math.random() - .5) * 8 * shake);
+    drawSky(); drawCity(); drawStreet(); drawHouse();
+    if (fever > 0 && state === 'play') {
+      const fg = ctx.createRadialGradient(W / 2, H / 2, 40, W / 2, H / 2, H * .7);
+      fg.addColorStop(0, 'rgba(255,143,177,0)'); fg.addColorStop(1, `rgba(255,143,177,${.18 + .08 * Math.sin(clock * 6)})`);
+      ctx.fillStyle = fg; ctx.fillRect(0, 0, W, H);
+    }
+    for (const it of items) drawItem(it);
+    drawChii();
+    for (const p of particles) { ctx.globalAlpha = Math.min(1, p.t * 2); ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill(); }
+    ctx.globalAlpha = 1;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    for (const p of popups) {
+      ctx.globalAlpha = Math.min(1, p.t * 2);
+      ctx.font = '800 16px "M PLUS Rounded 1c", sans-serif';
+      ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(28,26,51,.85)'; ctx.strokeText(p.text, p.x, p.y);
+      ctx.fillStyle = p.color; ctx.fillText(p.text, p.x, p.y);
+    }
+    ctx.globalAlpha = 1;
+    drawBubble();
+    if (state === 'play' && combo >= 5) {
+      ctx.font = '800 13px "M PLUS Rounded 1c", sans-serif'; ctx.textAlign = 'left';
+      ctx.fillStyle = '#7fd6a8'; ctx.fillText(`${combo} コンボ ×${1 + Math.min(4, Math.floor(combo / 5)) * .5}`, 12, 18);
+    }
+    if (state === 'play' && fever > 0) {
+      ctx.font = '800 13px "M PLUS Rounded 1c", sans-serif'; ctx.textAlign = 'right';
+      ctx.fillStyle = '#ff8fb1'; ctx.fillText(`いやしタイム ${Math.ceil(fever)}`, W - 12, 18);
+    }
+    ctx.restore();
+  }
+
+  // ---- Sizing ----
+  function resize() {
+    dpr = window.devicePixelRatio || 1;
+    scale = Math.max(.3, Math.min(stage.clientWidth / W, stage.clientHeight / H));
+    cv.style.width = W * scale + 'px'; cv.style.height = H * scale + 'px';
+    cv.width = Math.round(W * scale * dpr); cv.height = Math.round(H * scale * dpr);
+  }
+  addEventListener('resize', resize);
+
+  // ---- Input ----
+  const toWorld = e => (e.clientX - cv.getBoundingClientRect().left) / scale;
+  stage.addEventListener('pointerdown', e => {
+    if (e.target.closest('button')) return;
+    unlock();
+    if (state === 'play') { chii.target = toWorld(e); stage.setPointerCapture(e.pointerId); }
+  });
+  stage.addEventListener('pointermove', e => {
+    if (state !== 'play') return;
+    // Mouse follows on hover; touch / pen follows while pressed.
+    if (e.pointerType === 'mouse' || e.buttons) chii.target = toWorld(e);
+  });
+  addEventListener('keydown', e => {
+    if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Space'].includes(e.code)) e.preventDefault();
+    keys.add(e.code);
+    if (e.repeat) return;
+    unlock();
+    if (e.code === 'KeyP' || e.code === 'Escape') { state === 'play' ? pause() : resume(); }
+    else if (e.code === 'KeyM') $('muteBtn').click();
+    else if ((e.code === 'Space' || e.code === 'Enter') && (state === 'title' || (state === 'end' && endT > 1.2))) start();
+    else if ((e.code === 'Space' || e.code === 'Enter') && state === 'pause') resume();
+  });
+  addEventListener('keyup', e => keys.delete(e.code));
+  addEventListener('blur', () => { keys.clear(); pause(); });
+  document.addEventListener('visibilitychange', () => { if (document.hidden) pause(); });
+  // iOS: block double-tap / pinch zoom
+  document.addEventListener('gesturestart', e => e.preventDefault());
+  document.addEventListener('dblclick', e => e.preventDefault());
+
+  $('startBtn').onclick = start;
+  $('retryBtn').onclick = start;
+  $('resumeBtn').onclick = resume;
+
+  // ---- Loop ----
+  reset();
+  resize();
+  let last = performance.now();
+  function frame(now) {
+    const dt = Math.min(.05, (now - last) / 1000); last = now;
+    update(dt); draw();
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+  if (document.fonts) document.fonts.ready.then(resize);
+})();
+</script>
+</body>
+</html>
