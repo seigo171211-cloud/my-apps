@@ -1,0 +1,432 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>デカ文字壁紙</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link id="fontcss" rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;800&family=Zen+Kaku+Gothic+New:wght@400;500;900&family=Dela+Gothic+One&family=Shippori+Mincho+B1:wght@800&display=swap">
+<style>
+/* Layout: preview (phone-shaped canvas + optional lock-screen guide) on the left / top, controls on the right / below. */
+:root{
+  --bg:#f1efea; --surface:#ffffff; --sunken:#e7e4dd; --fg:#18171c; --muted:#6c6975;
+  --line:#d9d5cc; --accent:#d9573a; --accent-ink:#ffffff;
+  --f-display:"M PLUS Rounded 1c","Hiragino Maru Gothic ProN",system-ui,sans-serif;
+  --f-body:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#131217; --surface:#1c1b22; --sunken:#0e0d12; --fg:#f0eee8; --muted:#8f8c99;
+  --line:#2c2a35; --accent:#ff7b5c; --accent-ink:#1a0d07; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#131217; --surface:#1c1b22; --sunken:#0e0d12; --fg:#f0eee8; --muted:#8f8c99;
+  --line:#2c2a35; --accent:#ff7b5c; --accent-ink:#1a0d07; color-scheme:dark}
+
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+button,select,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer;border:0;background:none}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+
+.wrap{max-width:980px;margin:0 auto;padding:calc(16px + env(safe-area-inset-top,0px)) 16px calc(40px + env(safe-area-inset-bottom,0px))}
+header{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:16px}
+header h1{font-family:var(--f-display);font-weight:800;font-size:22px;margin:0;letter-spacing:.02em}
+header a{color:var(--muted);font-size:13px;text-decoration:none}
+
+.layout{display:grid;grid-template-columns:minmax(0,1fr);gap:20px}
+@media (min-width:820px){.layout{grid-template-columns:minmax(0,380px) minmax(0,1fr);align-items:start}
+  .stage{position:sticky;top:16px}}
+
+/* preview */
+.stage{display:flex;flex-direction:column;align-items:center;gap:10px}
+.phone{position:relative;height:min(62vh,720px);max-width:100%;border-radius:clamp(18px,6%,44px)/clamp(18px,2.8%,44px);overflow:hidden;box-shadow:0 0 0 6px var(--fg),0 18px 40px -18px rgba(0,0,0,.5);container-type:inline-size;background:#000}
+.phone canvas{display:block;width:100%;height:100%}
+.guide{position:absolute;inset:0;pointer-events:none;color:#fff;text-align:center;font-family:-apple-system,"SF Pro Display","Helvetica Neue",system-ui,sans-serif;mix-blend-mode:difference}
+.guide .date{position:absolute;left:0;right:0;top:8.2%;font-size:5.2cqw;font-weight:600;opacity:.9}
+.guide .time{position:absolute;left:0;right:0;top:10.5%;font-size:24cqw;font-weight:700;line-height:1;letter-spacing:-.02em}
+.guide .btm{position:absolute;bottom:4.5%;left:12%;right:12%;display:flex;justify-content:space-between}
+.guide .btm i{width:13cqw;height:13cqw;border-radius:50%;background:rgba(255,255,255,.35)}
+.guide .bar{position:absolute;bottom:1.3%;left:50%;transform:translateX(-50%);width:36%;height:.6%;min-height:3px;border-radius:9px;background:#fff}
+.stage-tools{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+.chip{font-size:13px;padding:6px 12px;border-radius:999px;background:var(--surface);border:1px solid var(--line);color:var(--muted)}
+.chip[aria-pressed="true"]{color:var(--fg);border-color:var(--fg)}
+.res{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+
+/* controls */
+.panel{display:flex;flex-direction:column;gap:18px}
+.field{display:flex;flex-direction:column;gap:8px}
+.field>label,.field>.lbl{font-size:12px;letter-spacing:.1em;color:var(--muted);font-weight:500;display:flex;justify-content:space-between;align-items:baseline}
+.field output{font-variant-numeric:tabular-nums;color:var(--fg);letter-spacing:0}
+textarea{width:100%;min-height:96px;resize:vertical;border:1px solid var(--line);border-radius:14px;background:var(--surface);padding:12px 14px;font-size:20px;line-height:1.4;font-family:var(--f-display);font-weight:800}
+select{width:100%;padding:11px 12px;border-radius:12px;border:1px solid var(--line);background:var(--surface)}
+input[type=range]{width:100%;accent-color:var(--accent)}
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;background:var(--sunken);border-radius:12px;padding:3px;gap:3px}
+.seg button{padding:9px 6px;border-radius:9px;font-size:13.5px;color:var(--muted);line-height:1.25}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--fg);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.fonts button{font-size:16px}
+.swatches{display:grid;grid-template-columns:repeat(auto-fill,minmax(52px,1fr));gap:8px}
+.sw{aspect-ratio:1;border-radius:12px;display:grid;place-items:center;font-weight:800;font-size:20px;font-family:var(--f-display);border:1px solid var(--line)}
+.sw[aria-pressed="true"]{outline:3px solid var(--fg);outline-offset:2px}
+.colors{display:flex;gap:14px;flex-wrap:wrap;align-items:center}
+.colors label{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted)}
+input[type=color]{width:38px;height:32px;border:1px solid var(--line);border-radius:8px;padding:2px;background:var(--surface)}
+.colors .chk{gap:6px}
+.save{width:100%;padding:16px;border-radius:16px;background:var(--accent);color:var(--accent-ink);font-family:var(--f-display);font-weight:800;font-size:18px}
+.save:active{transform:scale(.98)}
+.note{font-size:12.5px;color:var(--muted);margin:0;line-height:1.6}
+.note b{color:var(--fg);font-weight:500}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:8px 16px;border-radius:999px;font-size:13px;z-index:30;max-width:calc(100vw - 32px)}
+
+/* iOS fallback: long-press-to-save sheet */
+.sheet{position:fixed;inset:0;z-index:40;background:rgba(0,0,0,.82);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:24px}
+.sheet img{max-height:72vh;max-width:100%;border-radius:16px}
+.sheet p{color:#fff;margin:0;font-size:14px;text-align:center}
+.sheet button{color:#fff;border:1px solid rgba(255,255,255,.5);border-radius:999px;padding:8px 20px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>デカ文字壁紙</h1>
+    <a href="/">← アプリ一覧</a>
+  </header>
+
+  <div class="layout">
+    <div class="stage">
+      <div class="phone" id="phone">
+        <canvas id="cv" aria-label="壁紙のプレビュー"></canvas>
+        <div class="guide" id="guide" aria-hidden="true">
+          <div class="date" id="gDate"></div>
+          <div class="time" id="gTime"></div>
+          <div class="btm"><i></i><i></i></div>
+          <div class="bar"></div>
+        </div>
+      </div>
+      <div class="stage-tools">
+        <button class="chip" id="guideBtn" aria-pressed="true">時計ガイド</button>
+        <span class="res" id="res"></span>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="field">
+        <label for="text">リマインダー <span style="letter-spacing:0">改行もそのまま反映</span></label>
+        <textarea id="text" rows="3" placeholder="例：水を飲む"></textarea>
+      </div>
+
+      <div class="field">
+        <label for="device">機種</label>
+        <select id="device"></select>
+      </div>
+
+      <div class="field">
+        <span class="lbl">配置</span>
+        <div class="seg" id="place">
+          <button data-v="lock">時計の下</button>
+          <button data-v="center">まんなか</button>
+          <button data-v="full">画面いっぱい</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <span class="lbl">フォント</span>
+        <div class="seg fonts" id="font">
+          <button data-v="round" style="font-family:'M PLUS Rounded 1c';font-weight:800">まる</button>
+          <button data-v="gothic" style="font-family:'Zen Kaku Gothic New';font-weight:900">ゴシック</button>
+          <button data-v="heavy" style="font-family:'Dela Gothic One'">極太</button>
+          <button data-v="mincho" style="font-family:'Shippori Mincho B1';font-weight:800">明朝</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <span class="lbl">揃え</span>
+        <div class="seg" id="align">
+          <button data-v="center">中央</button>
+          <button data-v="left">左</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="scale">文字の大きさ <output id="scaleOut"></output></label>
+        <input type="range" id="scale" min="40" max="100" step="1">
+      </div>
+
+      <div class="field">
+        <span class="lbl">カラー</span>
+        <div class="swatches" id="swatches"></div>
+        <div class="colors">
+          <label>背景 <input type="color" id="bg1"></label>
+          <label class="chk"><input type="checkbox" id="grad"> グラデ</label>
+          <label id="bg2wrap">→ <input type="color" id="bg2"></label>
+          <label>文字 <input type="color" id="fg"></label>
+        </div>
+      </div>
+
+      <button class="save" id="save">画像を保存</button>
+      <p class="note">iPhoneでは共有シートの<b>「画像を保存」</b>で写真に入ります。設定 › 壁紙 で選び、<b>「遠近法ズーム」をオフ</b>にすると、ずれずにぴったり収まります。</p>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const store = {
+  get(k, d){ try{ const v = localStorage.getItem('kabegami.'+k); return v ? JSON.parse(v) : d; }catch{ return d; } },
+  set(k, v){ try{ localStorage.setItem('kabegami.'+k, JSON.stringify(v)); }catch{} }
+};
+
+// Portrait pixel sizes of iPhone screens.
+const DEVICES = [
+  {id:'1320x2868', name:'iPhone 17 Pro Max / 16 Pro Max', w:1320, h:2868},
+  {id:'1206x2622', name:'iPhone 17 / 17 Pro / 16 Pro', w:1206, h:2622},
+  {id:'1260x2736', name:'iPhone Air', w:1260, h:2736},
+  {id:'1290x2796', name:'iPhone 16 Plus / 15 Plus / 15 Pro Max / 14 Pro Max', w:1290, h:2796},
+  {id:'1179x2556', name:'iPhone 16 / 15 / 15 Pro / 14 Pro', w:1179, h:2556},
+  {id:'1284x2778', name:'iPhone 14 Plus / 13 Pro Max / 12 Pro Max', w:1284, h:2778},
+  {id:'1170x2532', name:'iPhone 16e / 14 / 13 / 13 Pro / 12 / 12 Pro', w:1170, h:2532},
+  {id:'1080x2340', name:'iPhone 13 mini / 12 mini', w:1080, h:2340},
+  {id:'828x1792',  name:'iPhone 11 / XR', w:828, h:1792},
+  {id:'750x1334',  name:'iPhone SE (第2・3世代) / 8', w:750, h:1334},
+];
+
+const FONTS = {
+  round:  {family:'M PLUS Rounded 1c', weight:800, lh:1.18},
+  gothic: {family:'Zen Kaku Gothic New', weight:900, lh:1.18},
+  heavy:  {family:'Dela Gothic One', weight:400, lh:1.22},
+  mincho: {family:'Shippori Mincho B1', weight:800, lh:1.22},
+};
+
+// Text block area as fractions of screen height. "lock" keeps clear of the clock and the bottom buttons.
+const PLACES = {
+  lock:   {top:.33, bottom:.86},
+  center: {top:.10, bottom:.90},
+  full:   {top:.04, bottom:.96},
+};
+
+const THEMES = [
+  {bg1:'#111111', bg2:'#111111', fg:'#ffffff'},
+  {bg1:'#ffffff', bg2:'#ffffff', fg:'#111111'},
+  {bg1:'#e5322d', bg2:'#e5322d', fg:'#ffffff'},
+  {bg1:'#ffd60a', bg2:'#ffd60a', fg:'#111111'},
+  {bg1:'#0b1f4b', bg2:'#0b1f4b', fg:'#ffd60a'},
+  {bg1:'#1f9e8f', bg2:'#1f9e8f', fg:'#ffffff'},
+  {bg1:'#ff5f8f', bg2:'#ffb36b', fg:'#ffffff'},
+  {bg1:'#3a2cff', bg2:'#c03aff', fg:'#ffffff'},
+  {bg1:'#0f2027', bg2:'#2c5364', fg:'#9ff3e4'},
+  {bg1:'#f6efe3', bg2:'#f6efe3', fg:'#c2410c'},
+];
+
+function guessDevice(){
+  const w = Math.round(screen.width * devicePixelRatio), h = Math.round(screen.height * devicePixelRatio);
+  const a = Math.min(w, h), b = Math.max(w, h);
+  return (DEVICES.find(d => d.w === a && d.h === b) || DEVICES[4]).id;
+}
+
+const S = Object.assign({
+  text:'スマホを\n置いて\n寝る',
+  device:guessDevice(), place:'lock', font:'round', align:'center', scale:100,
+  bg1:THEMES[0].bg1, bg2:THEMES[0].bg2, fg:THEMES[0].fg, grad:false, guide:true,
+}, store.get('state', {}));
+if (!DEVICES.some(d => d.id === S.device)) S.device = guessDevice();
+
+const cv = $('#cv'), ctx = cv.getContext('2d');
+
+/* ---------- text layout ---------- */
+// Latin words stay together; everything else breaks per character.
+const TOKEN = /[\x21-\x7EÀ-ɏ]+|[ \t　]+|\p{Extended_Pictographic}(?:️|‍\p{Extended_Pictographic})*|[\s\S]/gu;
+// Characters that may not start a line: let them hang past the margin instead.
+const NO_START = new Set([...'、。，．,.・：；:;！？!?）)」』】〉》〕］}ーぁぃぅぇぉっゃゅょゎァィゥェォッャュョヮヵヶ々〜…']);
+
+function breakChars(word, maxW, lines){
+  let cur = '';
+  for (const ch of word){
+    if (cur && ctx.measureText(cur + ch).width > maxW){ lines.push(cur); cur = ch; }
+    else cur += ch;
+  }
+  return cur;
+}
+
+function wrap(text, maxW){
+  const lines = [];
+  for (const para of text.split('\n')){
+    let line = '';
+    for (const t of para.match(TOKEN) || []){
+      const test = line + t;
+      if (ctx.measureText(test).width <= maxW || (line && NO_START.has(t[0]))){ line = test; continue; }
+      if (/^\s+$/.test(t)){ lines.push(line); line = ''; continue; }
+      if (line.trim()) lines.push(line.trimEnd());
+      line = ctx.measureText(t).width > maxW ? breakChars(t, maxW, lines) : t;
+    }
+    lines.push(line.trimEnd());
+  }
+  return lines;
+}
+
+function setFont(size){
+  const f = FONTS[S.font];
+  ctx.font = `${f.weight} ${size}px "${f.family}", "Hiragino Sans", sans-serif`;
+}
+
+function measureBlock(text, size, maxW){
+  setFont(size);
+  const lines = wrap(text, maxW);
+  const widest = Math.max(...lines.map(l => ctx.measureText(l).width));
+  return {lines, widest, height: lines.length * size * FONTS[S.font].lh};
+}
+
+// Largest font size whose block fits the box, keeping the typed line breaks
+// unless auto-wrapping makes the text much bigger.
+function fitSize(text, boxW, boxH){
+  const search = test => {
+    let lo = 8, hi = Math.min(boxW, boxH) * 1.2;
+    for (let i = 0; i < 22; i++){ const mid = (lo + hi) / 2; if (test(mid)) lo = mid; else hi = mid; }
+    return lo;
+  };
+  const wrapped = search(s => { const m = measureBlock(text, s, boxW); return m.height <= boxH && m.widest <= boxW * 1.08; });
+  const asTyped = search(s => { const m = measureBlock(text, s, Infinity); return m.height <= boxH && m.widest <= boxW; });
+  return asTyped >= wrapped * .75 ? asTyped : wrapped;
+}
+
+/* ---------- render ---------- */
+function device(){ return DEVICES.find(d => d.id === S.device); }
+
+function draw(){
+  const {w, h} = device();
+  if (cv.width !== w || cv.height !== h){ cv.width = w; cv.height = h; }
+  $('#phone').style.aspectRatio = `${w} / ${h}`;
+  $('#res').textContent = `${w} × ${h}px`;
+
+  if (S.grad){
+    const g = ctx.createLinearGradient(0, 0, w * .35, h);
+    g.addColorStop(0, S.bg1); g.addColorStop(1, S.bg2);
+    ctx.fillStyle = g;
+  } else ctx.fillStyle = S.bg1;
+  ctx.fillRect(0, 0, w, h);
+
+  const text = S.text.replace(/\s+$/, '');
+  if (!text) return;
+  const p = PLACES[S.place], margin = w * .08;
+  const boxW = w - margin * 2, boxTop = h * p.top, boxH = h * (p.bottom - p.top);
+  const size = fitSize(text, boxW, boxH) * S.scale / 100;
+  const m = measureBlock(text, size, boxW), lh = size * FONTS[S.font].lh;
+
+  ctx.fillStyle = S.fg;
+  ctx.textBaseline = 'middle';
+  ctx.textAlign = S.align;
+  const x = S.align === 'center' ? w / 2 : margin;
+  let y = boxTop + (boxH - m.height) / 2 + lh / 2;
+  for (const line of m.lines){ ctx.fillText(line, x, y + size * .04); y += lh; }
+}
+
+// Google Fonts ship as unicode-range subsets, so fetch the ones this text needs before drawing.
+let queued = false;
+function render(){
+  if (queued) return;
+  queued = true;
+  requestAnimationFrame(() => {
+    queued = false;
+    const f = FONTS[S.font], spec = `${f.weight} 100px "${f.family}"`;
+    if (document.fonts.check(spec, S.text)) draw();
+    else { draw(); document.fonts.load(spec, S.text).then(faces => { if (faces.length) draw(); }); }
+  });
+}
+document.fonts.addEventListener?.('loadingdone', render);
+$('#fontcss').addEventListener('load', render);
+
+/* ---------- controls ---------- */
+function save(){ store.set('state', S); }
+function update(patch){ Object.assign(S, patch); sync(); save(); render(); }
+
+function seg(id, key){
+  const el = $('#' + id);
+  el.addEventListener('click', e => { const b = e.target.closest('button'); if (b) update({[key]: b.dataset.v}); });
+  return () => el.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b.dataset.v === S[key]));
+}
+const segs = [seg('place', 'place'), seg('font', 'font'), seg('align', 'align')];
+
+$('#device').innerHTML = DEVICES.map(d => `<option value="${d.id}">${d.name}</option>`).join('');
+$('#device').addEventListener('change', e => update({device: e.target.value}));
+
+$('#text').addEventListener('input', e => update({text: e.target.value}));
+$('#scale').addEventListener('input', e => update({scale: +e.target.value}));
+
+$('#swatches').innerHTML = THEMES.map((t, i) =>
+  `<button class="sw" data-i="${i}" aria-label="配色${i + 1}" style="background:linear-gradient(160deg,${t.bg1},${t.bg2});color:${t.fg}">あ</button>`).join('');
+$('#swatches').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  const t = THEMES[b.dataset.i];
+  update({bg1: t.bg1, bg2: t.bg2, fg: t.fg, grad: t.bg1 !== t.bg2});
+});
+for (const k of ['bg1', 'bg2', 'fg']) $('#' + k).addEventListener('input', e => update({[k]: e.target.value}));
+$('#grad').addEventListener('change', e => update({grad: e.target.checked}));
+$('#guideBtn').addEventListener('click', () => update({guide: !S.guide}));
+
+function sync(){
+  segs.forEach(f => f());
+  if ($('#text').value !== S.text) $('#text').value = S.text;
+  $('#device').value = S.device;
+  $('#scale').value = S.scale;
+  $('#scaleOut').textContent = S.scale === 100 ? '最大' : S.scale + '%';
+  $('#bg1').value = S.bg1; $('#bg2').value = S.bg2; $('#fg').value = S.fg;
+  $('#grad').checked = S.grad; $('#bg2wrap').hidden = !S.grad;
+  $('#swatches').querySelectorAll('button').forEach(b => {
+    const t = THEMES[b.dataset.i];
+    b.setAttribute('aria-pressed', t.bg1 === S.bg1 && t.fg === S.fg && (!S.grad ? t.bg1 === t.bg2 : t.bg2 === S.bg2));
+  });
+  $('#guide').hidden = !S.guide;
+  $('#guideBtn').setAttribute('aria-pressed', S.guide);
+}
+
+function tickClock(){
+  const d = new Date();
+  $('#gTime').textContent = `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
+  $('#gDate').textContent = d.toLocaleDateString('ja-JP', {month:'long', day:'numeric', weekday:'short'});
+}
+tickClock(); setInterval(tickClock, 30000);
+
+/* ---------- export ---------- */
+function toast(msg){
+  const t = document.createElement('div');
+  t.className = 'toast'; t.textContent = msg; t.setAttribute('role', 'status');
+  document.body.append(t); setTimeout(() => t.remove(), 2400);
+}
+
+function fileName(){
+  const d = new Date(), p = n => String(n).padStart(2, '0');
+  return `kabegami-${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}.png`;
+}
+
+function showSheet(url){
+  const s = document.createElement('div');
+  s.className = 'sheet';
+  s.innerHTML = `<img alt="壁紙"><p>画像を長押しして「"写真"に保存」</p><button>閉じる</button>`;
+  s.querySelector('img').src = url;
+  s.querySelector('button').onclick = () => { s.remove(); URL.revokeObjectURL(url); };
+  document.body.append(s);
+}
+
+$('#save').addEventListener('click', async () => {
+  await document.fonts.load(`${FONTS[S.font].weight} 100px "${FONTS[S.font].family}"`, S.text).catch(() => {});
+  draw();
+  const blob = await new Promise(r => cv.toBlob(r, 'image/png'));
+  if (!blob){ toast('画像を作れませんでした'); return; }
+  const file = new File([blob], fileName(), {type:'image/png'});
+  const mobile = /iPhone|iPad|iPod|Android/.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && /Mac/.test(navigator.userAgent));
+  if (mobile && navigator.canShare?.({files:[file]})){
+    try { await navigator.share({files:[file]}); return; }
+    catch (e){ if (e.name === 'AbortError') return; }
+  }
+  const url = URL.createObjectURL(blob);
+  if (mobile){ showSheet(url); return; }
+  const a = Object.assign(document.createElement('a'), {href:url, download:file.name});
+  document.body.append(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+  toast('PNGを保存しました');
+});
+
+sync();
+render();
+</script>
+</body>
+</html>
