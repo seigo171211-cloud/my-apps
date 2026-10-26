@@ -32,9 +32,9 @@ a.item:hover{background:var(--hover)}
 a.item:focus-visible{outline:2px solid var(--fg);outline-offset:2px}
 .ic{width:40px;height:40px;display:grid;place-items:center;color:var(--ac)}
 .ic svg{width:28px;height:28px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
-.name{font-family:"M PLUS Rounded 1c",sans-serif;font-weight:800;font-size:17px;margin:0 0 3px;display:flex;align-items:center;gap:8px}
+.name{font-family:"M PLUS Rounded 1c",sans-serif;font-weight:800;font-size:17px;margin:0 0 3px;display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px}
 .desc{margin:0;color:var(--muted);font-size:13.5px;line-height:1.5}
-.tag{font-family:"Zen Kaku Gothic New",sans-serif;font-weight:500;font-size:11px;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:1px 8px}
+.tag{font-family:"Zen Kaku Gothic New",sans-serif;font-weight:500;font-size:11px;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:1px 8px;white-space:nowrap}
 .go{width:18px;height:18px;color:var(--muted);transition:transform .2s,color .2s}
 .go svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 a.item:hover .go{transform:translateX(4px);color:var(--fg)}
@@ -46,20 +46,46 @@ footer{margin-top:64px;color:var(--muted);font-size:12px}
 <main>
 <header>
   <h1>AIの犬のアプリ</h1>
-  <p class="lead">遊べるもの・使えるもの</p>
+  <p class="lead">遊べるもの・つくれるもの</p>
 </header>
 
 <section>
-  <h2>APPS</h2>
+  <h2>ゲーム <small>あそぶ</small></h2>
   <ul>
     <li><a class="item" href="/otsukare.html" style="--ac:var(--c1)">
       <span class="ic"><svg viewBox="0 0 28 28"><circle cx="9" cy="9" r="4"/><circle cx="14" cy="14" r="4"/><circle cx="19" cy="19" r="4"/><path d="M5 5l-2-2M23 23l2 2"/></svg></span>
-      <span><p class="name">おつかれドロップ</p><p class="desc">同じおやつをくっつけてケーキを目指すパズル</p></span>
+      <span><p class="name">おつかれドロップ <span class="tag">1人</span></p><p class="desc">同じおやつをくっつけてケーキを目指すパズル</p></span>
       <span class="go"><svg viewBox="0 0 18 18"><path d="M4 9h10M10 5l4 4-4 4"/></svg></span></a></li>
     <li><a class="item" href="/chii.html" style="--ac:var(--c6)">
       <span class="ic"><svg viewBox="0 0 28 28"><path d="M14 23s-9-5.5-9-12a4.5 4.5 0 0 1 9-1.5A4.5 4.5 0 0 1 23 11c0 6.5-9 12-9 12z"/></svg></span>
-      <span><p class="name">ちーちゃんおつかれ</p><p class="desc">帰り道でごほうびをキャッチ、しごとはよけるアクション</p></span>
+      <span><p class="name">ちーちゃんおつかれ <span class="tag">1人</span></p><p class="desc">帰り道でごほうびをキャッチ、しごとはよけるアクション</p></span>
       <span class="go"><svg viewBox="0 0 18 18"><path d="M4 9h10M10 5l4 4-4 4"/></svg></span></a></li>
+    <li><a class="item" href="/tron.html" style="--ac:var(--c3)">
+      <span class="ic"><svg viewBox="0 0 28 28"><path d="M3 22h8V8h10v12h4"/><circle cx="25" cy="20" r="1.5"/></svg></span>
+      <span><p class="name">ネオンライダー <span class="tag">2人対戦</span></p><p class="desc">光の線で相手を囲い込むバトル</p></span>
+      <span class="go"><svg viewBox="0 0 18 18"><path d="M4 9h10M10 5l4 4-4 4"/></svg></span></a></li>
+    <li><a class="item" href="/hockey.html" style="--ac:var(--c2)">
+      <span class="ic"><svg viewBox="0 0 28 28"><rect x="3" y="5" width="22" height="18" rx="3"/><path d="M14 5v18"/><circle cx="9" cy="14" r="2.5"/><circle cx="19" cy="14" r="1.5"/></svg></span>
+      <span><p class="name">スマッシュホッケー <span class="tag">2人対戦</span></p><p class="desc">ダッシュで打ち込むエアホッケー</p></span>
+      <span class="go"><svg viewBox="0 0 18 18"><path d="M4 9h10M10 5l4 4-4 4"/></svg></span></a></li>
+    <li><a class="item" href="/tanks.html" style="--ac:var(--c4)">
+      <span class="ic"><svg viewBox="0 0 28 28"><rect x="4" y="12" width="16" height="10" rx="2.5"/><circle cx="12" cy="17" r="2.5"/><path d="M14 17h11M4 25h16"/></svg></span>
+      <span><p class="name">バウンスタンク <span class="tag">2人対戦</span></p><p class="desc">壁で跳ね返る弾で撃ち合う戦車バトル</p></span>
+      <span class="go"><svg viewBox="0 0 18 18"><path d="M4 9h10M10 5l4 4-4 4"/></svg></span></a></li>
+    <li><a class="item" href="/party.html" style="--ac:var(--c6)">
+      <span class="ic"><svg viewBox="0 0 28 28"><path d="M14 3v6M14 19v6M3 14h6M19 14h6M7 7l3 3M18 18l3 3M21 7l-3 3M10 18l-3 3"/></svg></span>
+      <span><p class="name">はやおしパーティー <span class="tag">2人対戦</span></p><p class="desc">早撃ち・連打・色あてなど5つのミニゲーム</p></span>
+      <span class="go"><svg viewBox="0 0 18 18"><path d="M4 9h10M10 5l4 4-4 4"/></svg></span></a></li>
+    <li><a class="item" href="/coop.html" style="--ac:var(--c7)">
+      <span class="ic"><svg viewBox="0 0 28 28"><path d="M5 25V12a9 9 0 0 1 18 0v13M3 25h22"/><path d="M11 25v-7a3 3 0 0 1 6 0v7"/></svg></span>
+      <span><p class="name">ほのおとしずくの神殿 <span class="tag">2人協力</span></p><p class="desc">ふたりで力を合わせて解くパズルアクション</p></span>
+      <span class="go"><svg viewBox="0 0 18 18"><path d="M4 9h10M10 5l4 4-4 4"/></svg></span></a></li>
+  </ul>
+</section>
+
+<section>
+  <h2>クリエイティビティ <small>つくる・つかう</small></h2>
+  <ul>
     <li><a class="item" href="/kabegami.html" style="--ac:var(--c4)">
       <span class="ic"><svg viewBox="0 0 28 28"><rect x="7" y="2.5" width="14" height="23" rx="3"/><path d="M10.5 11h7M10.5 14.5h7M10.5 18h4.5"/></svg></span>
       <span><p class="name">デカ文字壁紙</p><p class="desc">リマインダーをどーんと載せたiPhone壁紙をつくる</p></span>
@@ -71,32 +97,6 @@ footer{margin-top:64px;color:var(--muted);font-size:12px}
     <li><a class="item" href="/koepad.html" style="--ac:var(--c2)">
       <span class="ic"><svg viewBox="0 0 28 28"><path d="M5 11v6M10 7v14M15 4v20M20 9v10M25 12v4"/></svg></span>
       <span><p class="name">コエパッド</p><p class="desc">入力した文字を声で読み上げる会話アシスト</p></span>
-      <span class="go"><svg viewBox="0 0 18 18"><path d="M4 9h10M10 5l4 4-4 4"/></svg></span></a></li>
-  </ul>
-</section>
-
-<section>
-  <h2>2 PLAYERS <small>1台のキーボードでふたりで</small></h2>
-  <ul>
-    <li><a class="item" href="/tron.html" style="--ac:var(--c3)">
-      <span class="ic"><svg viewBox="0 0 28 28"><path d="M3 22h8V8h10v12h4"/><circle cx="25" cy="20" r="1.5"/></svg></span>
-      <span><p class="name">ネオンライダー <span class="tag">対戦</span></p><p class="desc">光の線で相手を囲い込むバトル</p></span>
-      <span class="go"><svg viewBox="0 0 18 18"><path d="M4 9h10M10 5l4 4-4 4"/></svg></span></a></li>
-    <li><a class="item" href="/hockey.html" style="--ac:var(--c2)">
-      <span class="ic"><svg viewBox="0 0 28 28"><rect x="3" y="5" width="22" height="18" rx="3"/><path d="M14 5v18"/><circle cx="9" cy="14" r="2.5"/><circle cx="19" cy="14" r="1.5"/></svg></span>
-      <span><p class="name">スマッシュホッケー <span class="tag">対戦</span></p><p class="desc">ダッシュで打ち込むエアホッケー</p></span>
-      <span class="go"><svg viewBox="0 0 18 18"><path d="M4 9h10M10 5l4 4-4 4"/></svg></span></a></li>
-    <li><a class="item" href="/tanks.html" style="--ac:var(--c4)">
-      <span class="ic"><svg viewBox="0 0 28 28"><rect x="4" y="12" width="16" height="10" rx="2.5"/><circle cx="12" cy="17" r="2.5"/><path d="M14 17h11M4 25h16"/></svg></span>
-      <span><p class="name">バウンスタンク <span class="tag">対戦</span></p><p class="desc">壁で跳ね返る弾で撃ち合う戦車バトル</p></span>
-      <span class="go"><svg viewBox="0 0 18 18"><path d="M4 9h10M10 5l4 4-4 4"/></svg></span></a></li>
-    <li><a class="item" href="/party.html" style="--ac:var(--c6)">
-      <span class="ic"><svg viewBox="0 0 28 28"><path d="M14 3v6M14 19v6M3 14h6M19 14h6M7 7l3 3M18 18l3 3M21 7l-3 3M10 18l-3 3"/></svg></span>
-      <span><p class="name">はやおしパーティー <span class="tag">対戦</span></p><p class="desc">早撃ち・連打・色あてなど5つのミニゲーム</p></span>
-      <span class="go"><svg viewBox="0 0 18 18"><path d="M4 9h10M10 5l4 4-4 4"/></svg></span></a></li>
-    <li><a class="item" href="/coop.html" style="--ac:var(--c7)">
-      <span class="ic"><svg viewBox="0 0 28 28"><path d="M5 25V12a9 9 0 0 1 18 0v13M3 25h22"/><path d="M11 25v-7a3 3 0 0 1 6 0v7"/></svg></span>
-      <span><p class="name">ほのおとしずくの神殿 <span class="tag">協力</span></p><p class="desc">ふたりで力を合わせて解くパズルアクション</p></span>
       <span class="go"><svg viewBox="0 0 18 18"><path d="M4 9h10M10 5l4 4-4 4"/></svg></span></a></li>
   </ul>
 </section>
