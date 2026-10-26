@@ -1,0 +1,559 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>チーム対抗スコアボード</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;800&family=Zen+Kaku+Gothic+New:wght@400;500&display=swap">
+<style>
+/* Layout: header + tab bar, then one panel per tab (順位 / 記録 / 試合一覧 / 設定). All data lives in localStorage. */
+:root{
+  --bg:#f1efea; --surface:#ffffff; --sunken:#e7e4dd; --fg:#18171c; --muted:#6c6975;
+  --line:#d9d5cc; --accent:#d9573a; --accent-ink:#ffffff; --win:#1f9e8f; --lose:#c0392b;
+  --c1:#d9573a;--c2:#3f6fd8;--c3:#1f9e8f;--c4:#c48a1c;--c5:#8a55c9;--c6:#d6457a;--c7:#c9642a;--c8:#4c8a2e;
+  --f-display:"M PLUS Rounded 1c","Hiragino Maru Gothic ProN",system-ui,sans-serif;
+  --f-body:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#131217; --surface:#1c1b22; --sunken:#0e0d12; --fg:#f0eee8; --muted:#8f8c99;
+  --line:#2c2a35; --accent:#ff7b5c; --accent-ink:#1a0d07; --win:#4fd1c0; --lose:#ff7b7b;
+  --c1:#ff7b5c;--c2:#7ba3ff;--c3:#4fd1c0;--c4:#f2b53c;--c5:#b58cf0;--c6:#ff7aa8;--c7:#ff9a5c;--c8:#8fd16a;color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#131217; --surface:#1c1b22; --sunken:#0e0d12; --fg:#f0eee8; --muted:#8f8c99;
+  --line:#2c2a35; --accent:#ff7b5c; --accent-ink:#1a0d07; --win:#4fd1c0; --lose:#ff7b7b;
+  --c1:#ff7b5c;--c2:#7ba3ff;--c3:#4fd1c0;--c4:#f2b53c;--c5:#b58cf0;--c6:#ff7aa8;--c7:#ff9a5c;--c8:#8fd16a;color-scheme:dark}
+
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+button,select,input{font:inherit;color:inherit}
+button{cursor:pointer;border:0;background:none}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+
+.wrap{max-width:720px;margin:0 auto;padding:calc(16px + env(safe-area-inset-top,0px)) 16px calc(48px + env(safe-area-inset-bottom,0px))}
+header{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:16px}
+header h1{font-family:var(--f-display);font-weight:800;font-size:22px;margin:0;letter-spacing:.02em}
+header a{color:var(--muted);font-size:13px;text-decoration:none;white-space:nowrap}
+
+.tabs{position:sticky;top:0;z-index:10;display:grid;grid-template-columns:repeat(4,1fr);gap:3px;padding:3px;background:var(--sunken);border-radius:14px;margin-bottom:20px}
+.tabs button{padding:10px 4px;border-radius:11px;font-size:14px;color:var(--muted);font-weight:500}
+.tabs button[aria-selected="true"]{background:var(--surface);color:var(--fg);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+
+h2{font-size:12px;letter-spacing:.12em;color:var(--muted);font-weight:500;margin:0 0 10px;display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+h2 small{letter-spacing:.02em;font-size:12px}
+section+section{margin-top:28px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px}
+.empty{color:var(--muted);text-align:center;padding:28px 12px;font-size:14px}
+.empty button{margin-top:12px}
+#recForm,#recEmpty{margin-bottom:28px}
+
+/* chips & segmented */
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{font-size:13.5px;padding:7px 13px;border-radius:999px;background:var(--surface);border:1px solid var(--line);color:var(--muted)}
+.chip[aria-pressed="true"]{color:var(--accent-ink);background:var(--fg);border-color:var(--fg)}
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;background:var(--sunken);border-radius:12px;padding:3px;gap:3px}
+.seg button{padding:11px 6px;border-radius:9px;font-size:14px;color:var(--muted);line-height:1.25}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--fg);box-shadow:0 1px 3px rgba(0,0,0,.12);font-weight:500}
+
+.btn{padding:10px 16px;border-radius:12px;background:var(--surface);border:1px solid var(--line);font-size:14px}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-family:var(--f-display);font-weight:800}
+.btn.danger{color:var(--lose)}
+.btn:active{transform:scale(.98)}
+.big{width:100%;padding:16px;border-radius:16px;font-size:18px}
+.iconbtn{width:36px;height:36px;display:grid;place-items:center;border-radius:10px;color:var(--muted)}
+.iconbtn:hover{background:var(--sunken);color:var(--fg)}
+.iconbtn svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+
+input[type=text],input[type=number],select{width:100%;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:var(--surface);min-width:0}
+.dot{width:12px;height:12px;border-radius:50%;background:var(--tc);flex:none}
+
+/* ranking */
+.rank{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.rank li{display:grid;grid-template-columns:36px 1fr auto;align-items:center;gap:12px;padding:12px 14px;background:var(--surface);border:1px solid var(--line);border-left:5px solid var(--tc);border-radius:14px}
+.rank .pos{font-family:var(--f-display);font-weight:800;font-size:22px;text-align:center;color:var(--muted)}
+.rank li.top .pos{color:var(--c4)}
+.rank .nm{font-family:var(--f-display);font-weight:800;font-size:17px;line-height:1.3;overflow-wrap:anywhere}
+.rank .rec{font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.rank .pts{font-family:var(--f-display);font-weight:800;font-size:28px;font-variant-numeric:tabular-nums;text-align:right;line-height:1}
+.rank .pts small{font-size:12px;color:var(--muted);font-weight:500;margin-left:2px}
+.bar{height:4px;border-radius:4px;background:var(--sunken);margin-top:6px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--tc);border-radius:4px}
+
+.tblwrap{overflow-x:auto;border:1px solid var(--line);border-radius:14px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:13.5px;font-variant-numeric:tabular-nums}
+th,td{padding:9px 10px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--line)}
+tr:last-child td{border-bottom:0}
+th{font-weight:500;color:var(--muted);font-size:12px}
+th:first-child,td:first-child{text-align:left;position:sticky;left:0;background:var(--surface)}
+td.tot{font-weight:800;font-family:var(--f-display)}
+td .best{color:var(--accent);font-weight:800}
+
+/* record form */
+.form{display:flex;flex-direction:column;gap:18px}
+.field{display:flex;flex-direction:column;gap:8px}
+.lbl{font-size:12px;letter-spacing:.1em;color:var(--muted);font-weight:500}
+.vs{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:end}
+.vs .x{font-family:var(--f-display);font-weight:800;color:var(--muted);padding-bottom:10px}
+.side{display:flex;flex-direction:column;gap:8px}
+.side select{border-left:5px solid var(--tc,var(--line))}
+.step{display:grid;grid-template-columns:40px 1fr 40px;gap:4px;align-items:center}
+.step button{height:44px;border-radius:10px;background:var(--sunken);font-size:20px;font-weight:500}
+.step input{text-align:center;font-family:var(--f-display);font-weight:800;font-size:22px;padding:6px 4px;height:44px}
+.result{text-align:center;font-size:13px;min-height:1.4em}
+.result .w{color:var(--win);font-weight:500}
+.result .l{color:var(--lose);font-weight:500}
+.hint{font-size:12.5px;color:var(--muted);margin:0}
+.editing{display:flex;justify-content:space-between;align-items:center;gap:8px;background:var(--sunken);border-radius:12px;padding:8px 12px;font-size:13px}
+
+/* match list */
+.matches{list-style:none;margin:0;padding:0}
+.matches li{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+.matches li:last-child{border-bottom:0}
+.m{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center;font-size:14px}
+.m .t{display:flex;align-items:center;gap:6px;min-width:0}
+.m .t span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.m .t.r{justify-content:flex-end;text-align:right}
+.m .t.win span{font-weight:500}
+.m .t.lose{color:var(--muted)}
+.m .sc{font-family:var(--f-display);font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap;font-size:15px}
+.badge{font-size:10.5px;padding:0 6px;border-radius:999px;border:1px solid currentColor;flex:none}
+.badge.w{color:var(--win)}
+.badge.d{color:var(--muted)}
+.acts{display:flex}
+
+/* settings */
+.rows{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.rows li{display:flex;align-items:center;gap:8px}
+.rows input[type=text]{flex:1}
+.colorbtn{width:36px;height:36px;border-radius:10px;background:var(--tc);flex:none}
+.rule{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:6px;padding-left:4px}
+.rule label{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+.rule input{padding:6px 8px;text-align:center}
+.evrow{flex-direction:column;align-items:stretch!important;padding:10px;border:1px solid var(--line);border-radius:14px;background:var(--surface)}
+.evrow .top{display:flex;gap:8px;align-items:center}
+.add{display:flex;gap:8px;margin-top:10px}
+.add input{flex:1}
+.datarow{display:flex;gap:8px;flex-wrap:wrap}
+
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:8px 16px;border-radius:999px;font-size:13px;z-index:30;max-width:calc(100vw - 32px)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>チーム対抗スコアボード</h1>
+    <a href="/">← アプリ一覧</a>
+  </header>
+
+  <nav class="tabs" role="tablist">
+    <button role="tab" data-tab="rank">順位</button>
+    <button role="tab" data-tab="rec">記録</button>
+    <button role="tab" data-tab="list">試合一覧</button>
+    <button role="tab" data-tab="set">設定</button>
+  </nav>
+
+  <!-- 順位 -->
+  <div id="tab-rank" role="tabpanel">
+    <section>
+      <h2>項目でしぼる</h2>
+      <div class="chips" id="rankFilter"></div>
+    </section>
+    <section>
+      <h2><span id="rankTitle">総合順位</span><small id="rankSub"></small></h2>
+      <ol class="rank" id="rankList"></ol>
+    </section>
+    <section id="matrixSec">
+      <h2>項目別ポイント</h2>
+      <div class="tblwrap"><table id="matrix"></table></div>
+    </section>
+  </div>
+
+  <!-- 記録 -->
+  <div id="tab-rec" role="tabpanel" hidden>
+    <div class="card form" id="recForm">
+      <div class="editing" id="editBar" hidden><span>試合を編集中</span><button class="btn" id="cancelEdit">やめる</button></div>
+      <div class="field">
+        <span class="lbl">項目</span>
+        <div class="chips" id="recEvent"></div>
+      </div>
+      <div class="vs">
+        <div class="side"><span class="lbl">チームA</span><select id="teamA"></select></div>
+        <span class="x">VS</span>
+        <div class="side"><span class="lbl">チームB</span><select id="teamB"></select></div>
+      </div>
+      <div class="field">
+        <span class="lbl">勝敗</span>
+        <div class="seg" id="resSeg">
+          <button data-res="a">Aの勝ち</button>
+          <button data-res="d">引き分け</button>
+          <button data-res="b">Bの勝ち</button>
+        </div>
+      </div>
+      <div class="field">
+        <span class="lbl">獲得ポイント</span>
+        <div class="vs">
+          <div class="step" data-side="a"><button data-d="-1" aria-label="Aのポイントを減らす">−</button><input type="number" id="ptsA" inputmode="numeric"><button data-d="1" aria-label="Aのポイントを増やす">＋</button></div>
+          <span class="x">:</span>
+          <div class="step" data-side="b"><button data-d="-1" aria-label="Bのポイントを減らす">−</button><input type="number" id="ptsB" inputmode="numeric"><button data-d="1" aria-label="Bのポイントを増やす">＋</button></div>
+        </div>
+        <p class="hint" id="ruleHint"></p>
+      </div>
+      <button class="btn primary big" id="saveMatch">記録する</button>
+    </div>
+    <div class="card empty" id="recEmpty" hidden></div>
+    <section>
+      <h2><span id="recentTitle">この項目の試合</span><small id="recentCount"></small></h2>
+      <div class="card"><ul class="matches" id="recentList"></ul></div>
+    </section>
+  </div>
+
+  <!-- 試合一覧 -->
+  <div id="tab-list" role="tabpanel" hidden>
+    <div id="allMatches"></div>
+  </div>
+
+  <!-- 設定 -->
+  <div id="tab-set" role="tabpanel" hidden>
+    <section>
+      <h2>チーム<small id="teamCount"></small></h2>
+      <ul class="rows" id="teamRows"></ul>
+      <form class="add" id="addTeam"><input type="text" id="newTeam" placeholder="チーム名" maxlength="30"><button class="btn primary">追加</button></form>
+    </section>
+    <section>
+      <h2>項目<small>勝ち・引き分け・負けの初期ポイント</small></h2>
+      <ul class="rows" id="eventRows"></ul>
+      <form class="add" id="addEvent"><input type="text" id="newEvent" placeholder="項目名（例：ドッジボール）" maxlength="30"><button class="btn primary">追加</button></form>
+    </section>
+    <section>
+      <h2>データ</h2>
+      <div class="datarow">
+        <button class="btn" id="exportBtn">書き出し</button>
+        <button class="btn" id="importBtn">読み込み</button>
+        <button class="btn danger" id="clearMatches">試合だけ消す</button>
+        <button class="btn danger" id="resetAll">ぜんぶリセット</button>
+        <input type="file" id="importFile" accept="application/json,.json" hidden>
+      </div>
+      <p class="hint" style="margin-top:10px">記録はこの端末のブラウザに保存されます。別の端末に移すときは書き出し→読み込み。</p>
+    </section>
+  </div>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+const KEY = 'score.v1';
+const COLORS = ['c1','c2','c3','c4','c5','c6','c7','c8'];
+const ICON_EDIT = '<svg viewBox="0 0 18 18"><path d="M3 15l1-4 8-8 3 3-8 8-4 1zM10 5l3 3"/></svg>';
+const ICON_DEL = '<svg viewBox="0 0 18 18"><path d="M3 5h12M7 5V3h4v2M5 5l1 10h6l1-10"/></svg>';
+
+const uid = () => Math.random().toString(36).slice(2, 10);
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const num = v => { const n = Number(v); return Number.isFinite(n) ? n : 0; };
+
+function defaults(){
+  return {
+    teams: [
+      {id: uid(), name: '赤チーム', color: 'c1'},
+      {id: uid(), name: '青チーム', color: 'c2'},
+      {id: uid(), name: '緑チーム', color: 'c3'},
+    ],
+    events: [{id: uid(), name: '種目1', win: 3, draw: 1, lose: 0}],
+    matches: [],
+  };
+}
+function load(){
+  try{
+    const d = JSON.parse(localStorage.getItem(KEY));
+    if(d && Array.isArray(d.teams) && Array.isArray(d.events) && Array.isArray(d.matches)) return d;
+  }catch{}
+  return defaults();
+}
+let S = load();
+const save = () => { try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch{} };
+
+const ui = { tab: 'rank', filter: 'all', ev: null, a: null, b: null, res: 'a', editing: null };
+try{ Object.assign(ui, JSON.parse(sessionStorage.getItem(KEY + '.ui')) || {}); }catch{}
+const saveUi = () => { try{ sessionStorage.setItem(KEY + '.ui', JSON.stringify({tab: ui.tab, filter: ui.filter, ev: ui.ev})); }catch{} };
+
+const team = id => S.teams.find(t => t.id === id);
+const event = id => S.events.find(e => e.id === id);
+
+let toastT;
+function toast(msg){
+  const el = $('toast'); el.textContent = msg; el.hidden = false;
+  clearTimeout(toastT); toastT = setTimeout(() => el.hidden = true, 1800);
+}
+
+/* ---------- standings ---------- */
+function standings(evId){
+  const rows = new Map(S.teams.map(t => [t.id, {team: t, pts: 0, w: 0, d: 0, l: 0, n: 0, byEv: {}}]));
+  for(const m of S.matches){
+    if(evId !== 'all' && m.eventId !== evId) continue;
+    const A = rows.get(m.a), B = rows.get(m.b);
+    for(const [r, p, res] of [[A, m.pa, m.res === 'a' ? 'w' : m.res === 'b' ? 'l' : 'd'], [B, m.pb, m.res === 'b' ? 'w' : m.res === 'a' ? 'l' : 'd']]){
+      if(!r) continue;
+      r.pts += p; r[res]++; r.n++;
+      r.byEv[m.eventId] = (r.byEv[m.eventId] || 0) + p;
+    }
+  }
+  const list = [...rows.values()].sort((x, y) => y.pts - x.pts || y.w - x.w || x.l - y.l);
+  list.forEach((r, i) => {
+    const p = list[i - 1];
+    r.pos = p && p.pts === r.pts && p.w === r.w && p.l === r.l ? p.pos : i + 1;
+  });
+  return list;
+}
+
+function renderRank(){
+  if(ui.filter !== 'all' && !event(ui.filter)) ui.filter = 'all';
+  $('rankFilter').innerHTML = [['all', '総合'], ...S.events.map(e => [e.id, e.name])]
+    .map(([id, name]) => `<button class="chip" data-f="${id}" aria-pressed="${ui.filter === id}">${esc(name)}</button>`).join('');
+
+  const list = standings(ui.filter);
+  const ev = event(ui.filter);
+  $('rankTitle').textContent = ev ? `${ev.name} の順位` : '総合順位';
+  const n = S.matches.filter(m => ui.filter === 'all' || m.eventId === ui.filter).length;
+  $('rankSub').textContent = `${n}試合`;
+
+  if(!S.teams.length){
+    $('rankList').innerHTML = `<li class="empty" style="display:block;border-left-width:1px">チームがまだありません</li>`;
+  }else{
+    const max = Math.max(1, ...list.map(r => r.pts));
+    $('rankList').innerHTML = list.map(r => `
+      <li class="${r.pos === 1 && r.n ? 'top' : ''}" style="--tc:var(--${r.team.color})">
+        <span class="pos">${r.pos}</span>
+        <div>
+          <div class="nm">${esc(r.team.name)}</div>
+          <div class="rec">${r.w}勝 ${r.l}敗 ${r.d}分 ・ ${r.n}試合</div>
+          <div class="bar"><i style="width:${Math.max(0, r.pts) / max * 100}%"></i></div>
+        </div>
+        <span class="pts">${r.pts}<small>pt</small></span>
+      </li>`).join('');
+  }
+
+  const showMatrix = ui.filter === 'all' && S.events.length > 1 && S.teams.length;
+  $('matrixSec').hidden = !showMatrix;
+  if(showMatrix){
+    const best = {};
+    for(const e of S.events) best[e.id] = Math.max(...list.map(r => r.byEv[e.id] || 0));
+    $('matrix').innerHTML = `<thead><tr><th>チーム</th>${S.events.map(e => `<th>${esc(e.name)}</th>`).join('')}<th>合計</th></tr></thead><tbody>` +
+      list.map(r => `<tr><td><span style="display:inline-flex;align-items:center;gap:6px"><span class="dot" style="--tc:var(--${r.team.color})"></span>${esc(r.team.name)}</span></td>${
+        S.events.map(e => { const v = r.byEv[e.id]; return `<td>${v === undefined ? '–' : v === best[e.id] && v > 0 ? `<span class="best">${v}</span>` : v}</td>`; }).join('')
+      }<td class="tot">${r.pts}</td></tr>`).join('') + '</tbody>';
+  }
+}
+
+/* ---------- record form ---------- */
+function matchRow(m, withEvent){
+  const A = team(m.a), B = team(m.b), ev = event(m.eventId);
+  const side = (t, won, r) => `<span class="t ${r ? 'r' : ''} ${m.res === 'd' ? '' : won ? 'win' : 'lose'}">${r && won ? '<span class="badge w">勝</span>' : ''}${!r ? `<span class="dot" style="--tc:var(--${t ? t.color : 'line'})"></span>` : ''}<span>${esc(t ? t.name : '（削除）')}</span>${!r && won ? '<span class="badge w">勝</span>' : ''}${r ? `<span class="dot" style="--tc:var(--${t ? t.color : 'line'})"></span>` : ''}</span>`;
+  return `<li>
+    <div>
+      ${withEvent && ev ? `<div class="hint">${esc(ev.name)}</div>` : ''}
+      <div class="m">${side(A, m.res === 'a', false)}<span class="sc">${m.pa} : ${m.pb}${m.res === 'd' ? ' <span class="badge d">分</span>' : ''}</span>${side(B, m.res === 'b', true)}</div>
+    </div>
+    <div class="acts"><button class="iconbtn" data-edit="${m.id}" aria-label="編集">${ICON_EDIT}</button><button class="iconbtn" data-del="${m.id}" aria-label="削除">${ICON_DEL}</button></div>
+  </li>`;
+}
+
+function fillPoints(){
+  const ev = event(ui.ev); if(!ev) return;
+  $('ptsA').value = ui.res === 'a' ? ev.win : ui.res === 'b' ? ev.lose : ev.draw;
+  $('ptsB').value = ui.res === 'b' ? ev.win : ui.res === 'a' ? ev.lose : ev.draw;
+}
+
+function renderRec(){
+  const ok = S.teams.length >= 2 && S.events.length >= 1;
+  $('recForm').hidden = !ok;
+  $('recEmpty').hidden = ok;
+  if(!ok){
+    $('recEmpty').innerHTML = `${S.teams.length < 2 ? 'チームを2つ以上' : ''}${S.teams.length < 2 && !S.events.length ? 'と' : ''}${!S.events.length ? '項目を1つ以上' : ''}登録してください<br><button class="btn primary" data-go="set">設定へ</button>`;
+    $('recentList').innerHTML = '';
+    return;
+  }
+  if(!event(ui.ev)) ui.ev = S.events[0].id;
+  if(!team(ui.a)) ui.a = S.teams[0].id;
+  if(!team(ui.b) || ui.b === ui.a) ui.b = (S.teams.find(t => t.id !== ui.a) || {}).id;
+
+  $('editBar').hidden = !ui.editing;
+  $('saveMatch').textContent = ui.editing ? '更新する' : '記録する';
+  $('recEvent').innerHTML = S.events.map(e => `<button class="chip" data-ev="${e.id}" aria-pressed="${ui.ev === e.id}">${esc(e.name)}</button>`).join('');
+  const opts = sel => S.teams.map(t => `<option value="${t.id}" ${t.id === sel ? 'selected' : ''}>${esc(t.name)}</option>`).join('');
+  $('teamA').innerHTML = opts(ui.a); $('teamB').innerHTML = opts(ui.b);
+  $('teamA').style.setProperty('--tc', `var(--${team(ui.a).color})`);
+  $('teamB').style.setProperty('--tc', `var(--${team(ui.b).color})`);
+  const nA = team(ui.a).name, nB = team(ui.b).name;
+  const btns = $('resSeg').querySelectorAll('button');
+  btns[0].textContent = `${nA}の勝ち`; btns[2].textContent = `${nB}の勝ち`;
+  btns.forEach(b => b.setAttribute('aria-pressed', b.dataset.res === ui.res));
+  const ev = event(ui.ev);
+  $('ruleHint').textContent = `「${ev.name}」の初期値：勝ち ${ev.win} / 引き分け ${ev.draw} / 負け ${ev.lose}。得点を足したいときは自由に変えてOK。`;
+
+  const ms = S.matches.filter(m => m.eventId === ui.ev).slice().reverse();
+  $('recentTitle').textContent = `「${ev.name}」の試合`;
+  $('recentCount').textContent = `${ms.length}試合`;
+  $('recentList').innerHTML = ms.length ? ms.map(m => matchRow(m, false)).join('') : '<li class="empty" style="display:block">まだ試合がありません</li>';
+}
+
+function renderList(){
+  const groups = S.events.map(e => [e, S.matches.filter(m => m.eventId === e.id).slice().reverse()]).filter(([, ms]) => ms.length);
+  $('allMatches').innerHTML = groups.length
+    ? groups.map(([e, ms]) => `<section><h2>${esc(e.name)}<small>${ms.length}試合</small></h2><div class="card"><ul class="matches">${ms.map(m => matchRow(m, false)).join('')}</ul></div></section>`).join('')
+    : '<div class="card empty">まだ試合がありません<br><button class="btn primary" data-go="rec">記録する</button></div>';
+}
+
+/* ---------- settings ---------- */
+function renderSet(){
+  $('teamCount').textContent = `${S.teams.length}チーム`;
+  $('teamRows').innerHTML = S.teams.map(t => `<li>
+    <button class="colorbtn" style="--tc:var(--${t.color})" data-color="${t.id}" aria-label="色を変える"></button>
+    <input type="text" value="${esc(t.name)}" data-tname="${t.id}" maxlength="30" aria-label="チーム名">
+    <button class="iconbtn" data-tdel="${t.id}" aria-label="削除">${ICON_DEL}</button></li>`).join('');
+  $('eventRows').innerHTML = S.events.map(e => `<li class="evrow">
+    <div class="top"><input type="text" value="${esc(e.name)}" data-ename="${e.id}" maxlength="30" aria-label="項目名">
+    <button class="iconbtn" data-edel="${e.id}" aria-label="削除">${ICON_DEL}</button></div>
+    <div class="rule">
+      <label>勝ち<input type="number" value="${e.win}" data-rule="win" data-eid="${e.id}" inputmode="numeric"></label>
+      <label>引分<input type="number" value="${e.draw}" data-rule="draw" data-eid="${e.id}" inputmode="numeric"></label>
+      <label>負け<input type="number" value="${e.lose}" data-rule="lose" data-eid="${e.id}" inputmode="numeric"></label>
+    </div></li>`).join('');
+}
+
+function render(){
+  document.querySelectorAll('.tabs button').forEach(b => b.setAttribute('aria-selected', b.dataset.tab === ui.tab));
+  for(const t of ['rank', 'rec', 'list', 'set']) $('tab-' + t).hidden = t !== ui.tab;
+  ({rank: renderRank, rec: renderRec, list: renderList, set: renderSet})[ui.tab]();
+  saveUi();
+}
+function go(tab){ ui.tab = tab; render(); if(tab === 'rec' && !ui.editing) fillPoints(); window.scrollTo({top: 0}); }
+
+/* ---------- events ---------- */
+document.querySelector('.tabs').addEventListener('click', e => { const b = e.target.closest('button'); if(b) go(b.dataset.tab); });
+document.addEventListener('click', e => {
+  const g = e.target.closest('[data-go]'); if(g) go(g.dataset.go);
+  const ed = e.target.closest('[data-edit]');
+  if(ed){
+    const m = S.matches.find(x => x.id === ed.dataset.edit); if(!m) return;
+    Object.assign(ui, {ev: m.eventId, a: m.a, b: m.b, res: m.res, editing: m.id});
+    go('rec'); $('ptsA').value = m.pa; $('ptsB').value = m.pb;
+  }
+  const del = e.target.closest('[data-del]');
+  if(del && confirm('この試合を削除しますか？')){
+    S.matches = S.matches.filter(x => x.id !== del.dataset.del);
+    if(ui.editing === del.dataset.del) ui.editing = null;
+    save(); render(); toast('削除しました');
+  }
+});
+
+$('rankFilter').addEventListener('click', e => { const b = e.target.closest('[data-f]'); if(b){ ui.filter = b.dataset.f; render(); } });
+
+$('recEvent').addEventListener('click', e => { const b = e.target.closest('[data-ev]'); if(b){ ui.ev = b.dataset.ev; render(); fillPoints(); } });
+$('teamA').addEventListener('change', e => {
+  if(e.target.value === ui.b) ui.b = ui.a;   // swap instead of facing itself
+  ui.a = e.target.value; render();
+});
+$('teamB').addEventListener('change', e => {
+  if(e.target.value === ui.a) ui.a = ui.b;
+  ui.b = e.target.value; render();
+});
+$('resSeg').addEventListener('click', e => { const b = e.target.closest('[data-res]'); if(b){ ui.res = b.dataset.res; render(); fillPoints(); } });
+document.querySelectorAll('.step').forEach(s => s.addEventListener('click', e => {
+  const b = e.target.closest('[data-d]'); if(!b) return;
+  const inp = s.querySelector('input'); inp.value = num(inp.value) + Number(b.dataset.d);
+}));
+$('cancelEdit').addEventListener('click', () => { ui.editing = null; render(); fillPoints(); });
+$('saveMatch').addEventListener('click', () => {
+  if(ui.a === ui.b){ toast('ちがうチームを選んでください'); return; }
+  const data = {eventId: ui.ev, a: ui.a, b: ui.b, res: ui.res, pa: num($('ptsA').value), pb: num($('ptsB').value)};
+  if(ui.editing){
+    const m = S.matches.find(x => x.id === ui.editing);
+    if(m) Object.assign(m, data);
+    ui.editing = null; toast('更新しました');
+  }else{
+    S.matches.push({id: uid(), t: Date.now(), ...data});
+    const r = data.res === 'd' ? '引き分け' : `${team(data.res === 'a' ? data.a : data.b).name}の勝ち`;
+    toast(`記録しました：${r}`);
+  }
+  save(); render(); fillPoints();
+});
+
+$('addTeam').addEventListener('submit', e => {
+  e.preventDefault();
+  const name = $('newTeam').value.trim(); if(!name) return;
+  const used = S.teams.map(t => t.color);
+  const color = COLORS.find(c => !used.includes(c)) || COLORS[S.teams.length % COLORS.length];
+  S.teams.push({id: uid(), name, color}); $('newTeam').value = '';
+  save(); render(); $('newTeam').focus();
+});
+$('addEvent').addEventListener('submit', e => {
+  e.preventDefault();
+  const name = $('newEvent').value.trim(); if(!name) return;
+  S.events.push({id: uid(), name, win: 3, draw: 1, lose: 0}); $('newEvent').value = '';
+  save(); render(); $('newEvent').focus();
+});
+$('tab-set').addEventListener('change', e => {
+  const t = e.target;
+  if(t.dataset.tname){ const tm = team(t.dataset.tname); const v = t.value.trim(); if(tm && v){ tm.name = v; } else t.value = tm.name; }
+  if(t.dataset.ename){ const ev = event(t.dataset.ename); const v = t.value.trim(); if(ev && v){ ev.name = v; } else t.value = ev.name; }
+  if(t.dataset.rule){ const ev = event(t.dataset.eid); if(ev) ev[t.dataset.rule] = num(t.value); }
+  save();
+});
+$('tab-set').addEventListener('click', e => {
+  const c = e.target.closest('[data-color]');
+  if(c){ const tm = team(c.dataset.color); tm.color = COLORS[(COLORS.indexOf(tm.color) + 1) % COLORS.length]; save(); render(); }
+  const td = e.target.closest('[data-tdel]');
+  if(td){
+    const tm = team(td.dataset.tdel), n = S.matches.filter(m => m.a === tm.id || m.b === tm.id).length;
+    if(confirm(`「${tm.name}」を削除しますか？${n ? `\nこのチームの試合 ${n} 件も消えます。` : ''}`)){
+      S.teams = S.teams.filter(t => t.id !== tm.id);
+      S.matches = S.matches.filter(m => m.a !== tm.id && m.b !== tm.id);
+      ui.editing = null; save(); render();
+    }
+  }
+  const ed = e.target.closest('[data-edel]');
+  if(ed){
+    const ev = event(ed.dataset.edel), n = S.matches.filter(m => m.eventId === ev.id).length;
+    if(confirm(`「${ev.name}」を削除しますか？${n ? `\nこの項目の試合 ${n} 件も消えます。` : ''}`)){
+      S.events = S.events.filter(x => x.id !== ev.id);
+      S.matches = S.matches.filter(m => m.eventId !== ev.id);
+      ui.editing = null; save(); render();
+    }
+  }
+});
+
+$('exportBtn').addEventListener('click', () => {
+  const blob = new Blob([JSON.stringify(S, null, 2)], {type: 'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `scoreboard-${new Date().toISOString().slice(0, 10)}.json`;
+  a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+});
+$('importBtn').addEventListener('click', () => $('importFile').click());
+$('importFile').addEventListener('change', async e => {
+  const f = e.target.files[0]; e.target.value = ''; if(!f) return;
+  try{
+    const d = JSON.parse(await f.text());
+    if(!Array.isArray(d.teams) || !Array.isArray(d.events) || !Array.isArray(d.matches)) throw 0;
+    if(!confirm('いまの記録を読み込んだデータで置きかえますか？')) return;
+    S = d; ui.editing = null; save(); render(); toast('読み込みました');
+  }catch{ toast('読み込めないファイルです'); }
+});
+$('clearMatches').addEventListener('click', () => {
+  if(S.matches.length && confirm(`試合記録 ${S.matches.length} 件をすべて消しますか？（チームと項目は残ります）`)){
+    S.matches = []; ui.editing = null; save(); render(); toast('試合記録を消しました');
+  }
+});
+$('resetAll').addEventListener('click', () => {
+  if(confirm('チーム・項目・試合をすべて初期状態に戻しますか？')){
+    S = defaults(); ui.editing = null; save(); render(); toast('リセットしました');
+  }
+});
+
+render();
+if(ui.tab === 'rec') fillPoints();
+</script>
+</body>
+</html>
