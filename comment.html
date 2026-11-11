@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>添削コメント帳</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;800&family=Zen+Kaku+Gothic+New:wght@400;500&display=swap">
+<style>
+/* Layout: header, search + category chips, the comment list, and a sticky "組み立て" tray at the bottom that collects tapped comments. All data lives in localStorage. */
+:root{
+  --bg:#f1efea; --surface:#ffffff; --sunken:#e7e4dd; --fg:#18171c; --muted:#6c6975;
+  --line:#d9d5cc; --accent:#d6342a; --accent-ink:#ffffff; --ok:#1f8a6b; --mark:#fff0a8;
+  --f-display:"M PLUS Rounded 1c","Hiragino Maru Gothic ProN",system-ui,sans-serif;
+  --f-body:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#131217; --surface:#1c1b22; --sunken:#0e0d12; --fg:#f0eee8; --muted:#8f8c99;
+  --line:#2c2a35; --accent:#ff6b5e; --accent-ink:#1a0d0b; --ok:#4fd1a8; --mark:#5a4a12; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#131217; --surface:#1c1b22; --sunken:#0e0d12; --fg:#f0eee8; --muted:#8f8c99;
+  --line:#2c2a35; --accent:#ff6b5e; --accent-ink:#1a0d0b; --ok:#4fd1a8; --mark:#5a4a12; color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+button,select,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer;border:0;background:none}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.wrap{max-width:720px;margin:0 auto;padding:calc(16px + env(safe-area-inset-top,0px)) 16px 40px}
+header{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:16px}
+header h1{font-family:var(--f-display);font-weight:800;font-size:22px;margin:0;letter-spacing:.02em}
+header a{color:var(--muted);font-size:13px;text-decoration:none;white-space:nowrap}
+
+input[type=search],input[type=text],select,textarea{width:100%;padding:11px 13px;border-radius:12px;border:1px solid var(--line);background:var(--surface);min-width:0}
+textarea{resize:vertical;line-height:1.6}
+.tools{display:flex;gap:8px;margin-bottom:12px}
+.tools input{flex:1}
+.btn{padding:10px 16px;border-radius:12px;background:var(--surface);border:1px solid var(--line);font-size:14px;white-space:nowrap}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-family:var(--f-display);font-weight:800}
+.btn.danger{color:var(--accent)}
+.btn:active{transform:scale(.98)}
+.chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:8px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;font-size:13.5px;padding:7px 13px;border-radius:999px;background:var(--surface);border:1px solid var(--line);color:var(--muted)}
+.chip[aria-pressed="true"]{color:var(--bg);background:var(--fg);border-color:var(--fg)}
+.meta{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--muted);margin:8px 2px}
+.meta button{color:var(--muted);text-decoration:underline;text-underline-offset:3px;font-size:12px}
+
+.list{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.item{display:grid;grid-template-columns:1fr auto;background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.item .body{text-align:left;padding:12px 14px;display:block;width:100%}
+.item .body:hover{background:var(--sunken)}
+.item .txt{display:block;white-space:pre-wrap}
+.item .txt mark{background:var(--mark);color:inherit;border-radius:4px;padding:0 3px}
+.item .sub{display:block;font-size:11.5px;color:var(--muted);margin-top:4px}
+.item .edit{width:44px;color:var(--muted);border-left:1px solid var(--line);display:grid;place-items:center}
+.item .edit:hover{background:var(--sunken);color:var(--fg)}
+.item .edit svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.item.added{border-color:var(--ok)}
+.empty{color:var(--muted);text-align:center;padding:32px 12px;font-size:14px}
+
+.tray{position:sticky;bottom:0;margin:20px -16px 0;padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px));background:var(--bg);border-top:1px solid var(--line);box-shadow:0 -12px 24px -18px rgba(0,0,0,.35)}
+.tray h2{font-size:12px;letter-spacing:.12em;color:var(--muted);font-weight:500;margin:0 0 8px;display:flex;justify-content:space-between}
+.tray textarea{min-height:76px;max-height:40vh}
+.tray .row{display:flex;gap:8px;margin-top:8px}
+.tray .row .primary{flex:1}
+
+dialog{border:0;border-radius:18px;padding:20px;width:min(520px,calc(100vw - 32px));background:var(--surface);color:var(--fg)}
+dialog::backdrop{background:rgba(0,0,0,.45)}
+dialog h2{font-family:var(--f-display);font-weight:800;font-size:18px;margin:0 0 14px}
+dialog label{display:block;font-size:12px;color:var(--muted);margin:12px 0 4px}
+dialog .row{display:flex;gap:8px;margin-top:18px;flex-wrap:wrap}
+dialog .row .grow{flex:1}
+dialog p.help{font-size:12.5px;color:var(--muted);margin:6px 0 0}
+.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:9px 18px;border-radius:999px;font-size:14px;z-index:50;pointer-events:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>添削コメント帳</h1>
+    <a href="/">← アプリ一覧</a>
+  </header>
+
+  <div class="tools">
+    <input type="search" id="q" placeholder="コメントをさがす" autocomplete="off">
+    <button class="btn primary" id="addBtn">＋ 追加</button>
+  </div>
+  <div class="chips" id="cats"></div>
+  <div class="meta"><span id="count"></span><span><button id="sortBtn"></button>　<button id="dataBtn">データ</button></span></div>
+  <ul class="list" id="list"></ul>
+
+  <div class="tray">
+    <h2><span>組み立て</span><span id="trayInfo"></span></h2>
+    <textarea id="tray" placeholder="上のコメントをタップすると、ここに順番にたまります。自由に書き足せます。"></textarea>
+    <div class="row">
+      <button class="btn primary" id="copyBtn">まとめてコピー</button>
+      <button class="btn" id="clearBtn">クリア</button>
+    </div>
+  </div>
+</div>
+
+<dialog id="editDlg">
+  <form method="dialog" id="editForm">
+    <h2 id="editTitle">コメントを追加</h2>
+    <label for="eText">コメント</label>
+    <textarea id="eText" rows="5" required></textarea>
+    <p class="help">｛誤｝のように全角か半角の波かっこで囲むと、使うときに入力する「穴」になります。</p>
+    <label for="eCat">カテゴリ</label>
+    <select id="eCat"></select>
+    <div class="row">
+      <button type="button" class="btn danger" id="eDel">削除</button>
+      <span class="grow"></span>
+      <button type="button" class="btn" id="eCancel">やめる</button>
+      <button type="submit" class="btn primary">保存</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="fillDlg">
+  <form method="dialog" id="fillForm">
+    <h2>穴をうめる</h2>
+    <div id="fillFields"></div>
+    <div class="row">
+      <span class="grow"></span>
+      <button type="button" class="btn" id="fCancel">やめる</button>
+      <button type="submit" class="btn primary">追加する</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="dataDlg">
+  <h2>データ</h2>
+  <p class="help" style="margin:0">コメントはこの端末のブラウザにだけ保存されます。ほかの端末へ移すときは書き出して、読み込んでください。</p>
+  <div class="row">
+    <button class="btn" id="exportBtn">ファイルに書き出す</button>
+    <button class="btn" id="importBtn">ファイルから読み込む</button>
+    <input type="file" id="importFile" accept="application/json,.json" hidden>
+  </div>
+  <div class="row">
+    <button class="btn danger" id="resetBtn">はじめの状態に戻す</button>
+    <span class="grow"></span>
+    <button class="btn" id="dataClose">とじる</button>
+  </div>
+</dialog>
+
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+const KEY = 'comment-book-v1', TRAY_KEY = 'comment-book-tray';
+const uid = () => Math.random().toString(36).slice(2, 9);
+const esc = s => s.replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
+const HOLE = /[{｛]([^{}｛｝]*)[}｝]/g;
+
+function seed(){
+  const data = {
+    'ほめる': ['全体の流れが明快で、言いたいことがよく伝わります。', '｛表現｝を正しく使えています。この調子です。', '具体例が主張をしっかり支えています。', '設問の指示にきちんと答えられています。'],
+    '文法': ['主語と動詞の一致を確認しましょう（三人称単数の -s）。', '時制がそろっていません。過去の出来事は過去形で統一しましょう。', '｛誤｝ → ｛正｝。冠詞（a / an / the）の使い分けを見直しましょう。', '可算名詞の単数形には冠詞か所有格が必要です。', '関係詞のあとの文に欠けている要素がないか確認しましょう。'],
+    '語法・語彙': ['｛誤｝ → ｛正｝。動詞の語法（うしろにとる形）を辞書で確認しましょう。', 'コロケーションが不自然です。｛表現｝のほうが自然です。', '同じ語のくり返しが目立ちます。言いかえを使ってみましょう。', 'スペルミス：｛誤｝ → ｛正｝'],
+    '構成': ['最初の文で自分の立場をはっきり示しましょう。', '理由が1つだけなので、もう1つ加えると説得力が増します。', '理由と具体例のつながりを示す語（For example, / This is because など）を入れましょう。', '結論で主張をもう一度、別の表現でまとめましょう。'],
+    '内容': ['設問が求めていることからずれています。問いをもう一度読み直しましょう。', '指定語数に届いていません。具体例を1つ足してみましょう。', '下線部の内容がぬけています：｛ぬけている内容｝', '和文の意図は「｛意図｝」です。直訳ではなく意味をくみ取って訳しましょう。'],
+    'しめの一言': ['解説の該当箇所をもう一度読んで、同じ型の問題で確かめてみましょう。', '今回直した表現を自分の例文で書いてみると定着します。', '次回も楽しみにしています。'],
+  };
+  const cats = Object.keys(data).map(name => ({id: uid(), name}));
+  const items = [];
+  cats.forEach(c => data[c.name].forEach(text => items.push({id: uid(), cat: c.id, text, uses: 0})));
+  return {cats, items, sort: 'added'};
+}
+function load(){
+  try{
+    const d = JSON.parse(localStorage.getItem(KEY));
+    if(d && Array.isArray(d.cats) && Array.isArray(d.items)) return d;
+  }catch{}
+  return seed();
+}
+let S = load(), cat = 'all', editing = null, pending = null, addedFlash = null;
+const save = () => { try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch{} };
+try{ $('tray').value = localStorage.getItem(TRAY_KEY) || ''; }catch{}
+
+function toast(msg){
+  document.querySelectorAll('.toast').forEach(t => t.remove());
+  const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; t.setAttribute('role', 'status');
+  document.body.appendChild(t); setTimeout(() => t.remove(), 1600);
+}
+async function copy(text){
+  try{ await navigator.clipboard.writeText(text); return true; }
+  catch{
+    const ta = document.createElement('textarea'); ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select(); let ok = false; try{ ok = document.execCommand('copy'); }catch{} ta.remove(); return ok;
+  }
+}
+
+function render(){
+  const q = $('q').value.trim().toLowerCase();
+  $('cats').innerHTML = [{id: 'all', name: 'すべて'}, ...S.cats].map(c => `<button class="chip" data-id="${c.id}" aria-pressed="${cat === c.id}">${esc(c.name)}</button>`).join('');
+  let items = S.items.filter(i => (cat === 'all' || i.cat === cat) && (!q || i.text.toLowerCase().includes(q)));
+  if(S.sort === 'uses') items = [...items].sort((a, b) => b.uses - a.uses);
+  $('count').textContent = `${items.length} 件`;
+  $('sortBtn').textContent = S.sort === 'uses' ? 'よく使う順' : '登録順';
+  const catName = id => (S.cats.find(c => c.id === id) || {name: ''}).name;
+  $('list').innerHTML = items.length ? items.map(i => `<li class="item${addedFlash === i.id ? ' added' : ''}">
+    <button class="body" data-id="${i.id}"><span class="txt">${esc(i.text).replace(HOLE, '<mark>$1</mark>')}</span><span class="sub">${esc(catName(i.cat))}${i.uses ? ` ・ ${i.uses}回` : ''}</span></button>
+    <button class="edit" data-edit="${i.id}" aria-label="編集"><svg viewBox="0 0 18 18"><path d="M3 15l1-4 8-8 3 3-8 8zM10.5 4.5l3 3"/></svg></button></li>`).join('')
+    : `<li class="empty">${S.items.length ? '見つかりませんでした' : 'コメントがまだありません。「＋ 追加」から登録できます'}</li>`;
+  paintTray();
+}
+function paintTray(){
+  const v = $('tray').value;
+  $('trayInfo').textContent = v ? `${v.length} 文字` : '';
+}
+function addToTray(item, text){
+  const ta = $('tray');
+  ta.value = ta.value ? ta.value.replace(/\n*$/, '\n') + text : text;
+  ta.scrollTop = ta.scrollHeight;
+  item.uses++; save(); saveTray();
+  addedFlash = item.id; render(); setTimeout(() => { addedFlash = null; const el = document.querySelector('.item.added'); if(el) el.classList.remove('added'); }, 700);
+}
+const saveTray = () => { try{ localStorage.setItem(TRAY_KEY, $('tray').value); }catch{} paintTray(); };
+
+$('cats').addEventListener('click', e => { const b = e.target.closest('.chip'); if(b){ cat = b.dataset.id; render(); } });
+$('q').addEventListener('input', render);
+$('sortBtn').onclick = () => { S.sort = S.sort === 'uses' ? 'added' : 'uses'; save(); render(); };
+$('tray').addEventListener('input', saveTray);
+
+$('list').addEventListener('click', e => {
+  const ed = e.target.closest('[data-edit]');
+  if(ed){ openEdit(S.items.find(i => i.id === ed.dataset.edit)); return; }
+  const b = e.target.closest('.body'); if(!b) return;
+  const item = S.items.find(i => i.id === b.dataset.id);
+  const holes = [...item.text.matchAll(HOLE)].map(m => m[1]);
+  if(!holes.length){ addToTray(item, item.text); return; }
+  pending = item;
+  $('fillFields').innerHTML = holes.map((h, n) => `<label for="h${n}">${esc(h || '入力')}</label><input type="text" id="h${n}" autocomplete="off">`).join('');
+  $('fillDlg').showModal(); $('h0').focus();
+});
+$('fillForm').addEventListener('submit', () => {
+  let n = 0;
+  const text = pending.text.replace(HOLE, (m, name) => { const v = $('h' + n++).value.trim(); return v || `｛${name}｝`; });
+  addToTray(pending, text); pending = null;
+});
+$('fCancel').onclick = () => $('fillDlg').close();
+
+$('copyBtn').onclick = async () => {
+  const v = $('tray').value.trim();
+  if(!v){ toast('まだ空です'); return; }
+  toast(await copy(v) ? 'コピーしました' : 'コピーできませんでした');
+};
+$('clearBtn').onclick = () => { if(!$('tray').value) return; $('tray').value = ''; saveTray(); toast('クリアしました'); };
+
+// ---- add / edit ----
+function openEdit(item){
+  editing = item || null;
+  $('editTitle').textContent = item ? 'コメントを編集' : 'コメントを追加';
+  $('eText').value = item ? item.text : '';
+  $('eCat').innerHTML = S.cats.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('') + '<option value="__new">＋ 新しいカテゴリ…</option>';
+  $('eCat').value = item ? item.cat : (cat !== 'all' ? cat : (S.cats[0] ? S.cats[0].id : '__new'));
+  $('eDel').hidden = !item;
+  $('editDlg').showModal(); $('eText').focus();
+}
+$('addBtn').onclick = () => openEdit(null);
+$('eCancel').onclick = () => $('editDlg').close();
+$('eCat').addEventListener('change', () => {
+  if($('eCat').value !== '__new') return;
+  const name = (prompt('新しいカテゴリの名前') || '').trim();
+  if(!name){ $('eCat').value = S.cats[0] ? S.cats[0].id : '__new'; return; }
+  const c = {id: uid(), name: name.slice(0, 20)}; S.cats.push(c); save();
+  const o = document.createElement('option'); o.value = c.id; o.textContent = c.name; $('eCat').insertBefore(o, $('eCat').lastElementChild); $('eCat').value = c.id;
+});
+$('editForm').addEventListener('submit', e => {
+  const text = $('eText').value.trim(), c = $('eCat').value;
+  if(!text || c === '__new'){ e.preventDefault(); toast(text ? 'カテゴリを選んでください' : 'コメントを入力してください'); return; }
+  if(editing){ editing.text = text; editing.cat = c; } else S.items.unshift({id: uid(), cat: c, text, uses: 0});
+  save(); render(); toast('保存しました');
+});
+$('eDel').onclick = () => {
+  if(!editing || !confirm('このコメントを削除しますか？')) return;
+  S.items = S.items.filter(i => i !== editing);
+  S.cats = S.cats.filter(c => S.items.some(i => i.cat === c.id));   // drop categories left empty
+  if(cat !== 'all' && !S.cats.some(c => c.id === cat)) cat = 'all';
+  save(); $('editDlg').close(); render(); toast('削除しました');
+};
+
+// ---- data ----
+$('dataBtn').onclick = () => $('dataDlg').showModal();
+$('dataClose').onclick = () => $('dataDlg').close();
+$('exportBtn').onclick = () => {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(S, null, 2)], {type: 'application/json'}));
+  a.download = 'comment-book.json'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+};
+$('importBtn').onclick = () => $('importFile').click();
+$('importFile').addEventListener('change', async e => {
+  const f = e.target.files[0]; e.target.value = ''; if(!f) return;
+  try{
+    const d = JSON.parse(await f.text());
+    if(!Array.isArray(d.cats) || !Array.isArray(d.items)) throw 0;
+    const cats = d.cats.filter(c => c && typeof c.id === 'string' && typeof c.name === 'string');
+    const items = d.items.filter(i => i && typeof i.text === 'string' && cats.some(c => c.id === i.cat)).map(i => ({id: String(i.id || uid()), cat: i.cat, text: i.text, uses: +i.uses || 0}));
+    if(!confirm(`${items.length} 件のコメントを読み込みます。いまのコメントは置きかわります。`)) return;
+    S = {cats, items, sort: d.sort === 'uses' ? 'uses' : 'added'}; cat = 'all'; save(); render(); $('dataDlg').close(); toast('読み込みました');
+  }catch{ toast('読み込めないファイルです'); }
+});
+$('resetBtn').onclick = () => {
+  if(!confirm('登録したコメントをすべて消して、はじめの状態に戻しますか？')) return;
+  S = seed(); cat = 'all'; save(); render(); $('dataDlg').close(); toast('はじめの状態に戻しました');
+};
+
+render();
+</script>
+</body>
+</html>

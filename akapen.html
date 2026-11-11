@@ -1,0 +1,338 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>赤ペンダッシュ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;800&family=Zen+Kaku+Gothic+New:wght@400;500&family=Lora:wght@500;600&display=swap">
+<style>
+/* Layout: header, HUD (time / score / combo), the answer sheet with tappable words, then title / result overlays. */
+:root{
+  --bg:#efe9dc; --paper:#fffdf7; --rule:#dfe6f2; --fg:#1d1b22; --muted:#756f66; --line:#d8d0c0;
+  --red:#d6342a; --red-soft:#fde3df; --ok:#1f8a6b; --ok-soft:#d9f2e8; --ink:#ffffff;
+  --f-display:"M PLUS Rounded 1c","Hiragino Maru Gothic ProN",system-ui,sans-serif;
+  --f-body:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",system-ui,sans-serif;
+  --f-en:"Lora",Georgia,"Times New Roman",serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#15131a; --paper:#201d27; --rule:#2b2835; --fg:#f1ede4; --muted:#9a94a3; --line:#35313f;
+  --red:#ff6b5e; --red-soft:#4a2320; --ok:#4fd1a8; --ok-soft:#173b30; --ink:#1a0d0b; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#15131a; --paper:#201d27; --rule:#2b2835; --fg:#f1ede4; --muted:#9a94a3; --line:#35313f;
+  --red:#ff6b5e; --red-soft:#4a2320; --ok:#4fd1a8; --ok-soft:#173b30; --ink:#1a0d0b; color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+button{font:inherit;color:inherit;cursor:pointer;border:0;background:none}
+:focus-visible{outline:3px solid var(--red);outline-offset:2px}
+.wrap{max-width:680px;margin:0 auto;padding:calc(16px + env(safe-area-inset-top,0px)) 16px calc(40px + env(safe-area-inset-bottom,0px))}
+header{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:16px}
+header h1{font-family:var(--f-display);font-weight:800;font-size:22px;margin:0;letter-spacing:.02em}
+header nav{display:flex;gap:14px;align-items:baseline}
+header a,header button{color:var(--muted);font-size:13px;text-decoration:none;white-space:nowrap}
+
+.hud{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px}
+.hud div{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:8px 12px}
+.hud span{display:block;font-size:11px;letter-spacing:.12em;color:var(--muted)}
+.hud b{font-family:var(--f-display);font-weight:800;font-size:24px;line-height:1.2;font-variant-numeric:tabular-nums}
+.hud .low b{color:var(--red)}
+.bar{height:6px;border-radius:3px;background:var(--line);overflow:hidden;margin-bottom:16px}
+.bar i{display:block;height:100%;background:var(--red);transform-origin:left;width:100%}
+
+.sheet{position:relative;background:var(--paper);border:1px solid var(--line);border-radius:18px;padding:22px 18px 18px;min-height:300px;
+  background-image:linear-gradient(var(--rule) 1px,transparent 1px);background-size:100% 36px;background-position:0 20px;box-shadow:0 10px 30px -20px rgba(0,0,0,.4)}
+.sheet.shake{animation:shake .3s}
+@keyframes shake{25%{transform:translateX(-7px)}50%{transform:translateX(6px)}75%{transform:translateX(-4px)}}
+.qno{font-size:12px;letter-spacing:.12em;color:var(--muted);margin:0 0 14px}
+.words{display:flex;flex-wrap:wrap;gap:8px 6px;font-family:var(--f-en);font-size:clamp(21px,5.6vw,27px);line-height:1.3}
+.words button{padding:5px 7px;border-radius:9px;border:1.5px solid transparent;transition:background .12s,transform .08s}
+.words button:hover{background:var(--rule)}
+.words button:active{transform:scale(.95)}
+.words button.hit{background:var(--ok-soft);border-color:var(--ok);color:var(--ok)}
+.words button.miss{background:var(--red-soft);border-color:var(--red);color:var(--red)}
+.words button.ans{border-color:var(--red);color:var(--red);text-decoration:line-through;text-decoration-thickness:2px}
+.words.done button{pointer-events:none}
+.fix{margin-top:18px;min-height:76px}
+.fix p{margin:0}
+.fix .corr{font-family:var(--f-en);font-size:20px;color:var(--red);font-weight:600}
+.fix .corr s{color:var(--muted);font-weight:500}
+.fix .note{color:var(--muted);font-size:14px;margin-top:4px}
+.fix .mark{font-family:var(--f-display);font-weight:800;font-size:15px;margin-bottom:2px}
+.fix .mark.good{color:var(--ok)} .fix .mark.bad{color:var(--red)}
+.next{font-size:12px;color:var(--muted);text-align:right;margin-top:8px}
+
+.panel{background:var(--paper);border:1px solid var(--line);border-radius:18px;padding:24px 20px;text-align:center}
+.panel h2{font-family:var(--f-display);font-weight:800;font-size:26px;margin:0 0 8px}
+.panel p{margin:0 0 14px;color:var(--muted)}
+.panel .eg{font-family:var(--f-en);font-size:20px;color:var(--fg);margin:16px 0}
+.panel .eg u{color:var(--red);text-decoration:line-through}
+.btn{display:inline-block;padding:14px 34px;border-radius:999px;background:var(--red);color:var(--ink);font-family:var(--f-display);font-weight:800;font-size:18px}
+.btn:active{transform:scale(.97)}
+.rules{list-style:none;padding:0;margin:0 0 20px;font-size:14px;color:var(--muted);line-height:1.9}
+.rules b{color:var(--fg)}
+.bigscore{font-family:var(--f-display);font-weight:800;font-size:56px;line-height:1.1;margin:4px 0}
+.rank{font-family:var(--f-display);font-weight:800;color:var(--red);font-size:18px;margin-bottom:6px}
+.stats{display:flex;justify-content:center;gap:22px;margin:10px 0 20px;font-size:13px;color:var(--muted)}
+.stats b{display:block;font-family:var(--f-display);font-size:20px;color:var(--fg)}
+.review{text-align:left;margin-top:24px}
+.review h3{font-size:12px;letter-spacing:.12em;color:var(--muted);font-weight:500;margin:0 0 8px}
+.review li{list-style:none;padding:12px 0;border-top:1px solid var(--line)}
+.review ul{padding:0;margin:0}
+.review .en{font-family:var(--f-en);font-size:17px}
+.review .en u{color:var(--red);text-decoration:line-through}
+.review .en em{color:var(--ok);font-style:normal;font-weight:600}
+.review .jp{font-size:13px;color:var(--muted)}
+@media (prefers-reduced-motion:reduce){.sheet.shake{animation:none}.words button{transition:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>赤ペンダッシュ</h1>
+    <nav><button id="muteBtn" aria-pressed="false">音 ON</button><a href="/">← アプリ一覧</a></nav>
+  </header>
+
+  <section class="panel" id="title">
+    <h2>まちがいを1語、見つけて赤ペン</h2>
+    <p>英文のなかに、まちがっている語がひとつだけあります。</p>
+    <p class="eg">She <u>have</u> a dog named Pochi.</p>
+    <ul class="rules">
+      <li><b>60秒</b>でできるだけたくさん添削する</li>
+      <li>連続正解で<b>コンボ</b>、得点アップ</li>
+      <li>はずすと<b>−5秒</b>。解説を読んでいる間は時計が止まります</li>
+    </ul>
+    <button class="btn" id="startBtn">スタート</button>
+    <p style="margin:16px 0 0;font-size:13px">ベスト <b id="bestTitle">0</b> 点</p>
+  </section>
+
+  <section id="game" hidden>
+    <div class="hud">
+      <div id="hudTime"><span>のこり</span><b id="time">60.0</b></div>
+      <div><span>スコア</span><b id="score">0</b></div>
+      <div><span>コンボ</span><b id="combo">0</b></div>
+    </div>
+    <div class="bar"><i id="barFill"></i></div>
+    <div class="sheet" id="sheet">
+      <p class="qno" id="qno"></p>
+      <div class="words" id="words"></div>
+      <div class="fix" id="fix" aria-live="polite"></div>
+      <p class="next" id="nextHint" hidden>タップでつぎへ</p>
+    </div>
+  </section>
+
+  <section class="panel" id="result" hidden>
+    <p style="margin:0">けっか</p>
+    <div class="bigscore" id="finalScore">0</div>
+    <div class="rank" id="rank"></div>
+    <div class="stats"><div><b id="stRight">0</b>正解</div><div><b id="stMiss">0</b>ミス</div><div><b id="stCombo">0</b>最大コンボ</div><div><b id="stBest">0</b>ベスト</div></div>
+    <button class="btn" id="againBtn">もう一度</button>
+    <div class="review" id="review" hidden><h3>見直し</h3><ul id="reviewList"></ul></div>
+  </section>
+</div>
+
+<script>
+'use strict';
+// Each item: "sentence with the [wrong] word bracketed | correction ('' = just remove it) | why". Grouped by level.
+const BANK = [
+[ // level 1
+'She [have] a dog named Pochi.|has|主語が三人称単数なので has',
+'I [goed] to the library yesterday.|went|go の過去形は went',
+'There [is] many students in the room.|are|主語は many students（複数）',
+'He is good [in] playing tennis.|at|be good at 〜「〜が得意」',
+'I am looking forward to [see] you.|seeing|look forward to の to は前置詞。うしろは動名詞',
+'She [don\'t] like coffee.|doesn\'t|三人称単数の否定は doesn\'t',
+'We enjoyed [play] soccer after school.|playing|enjoy は動名詞を目的語にとる',
+'This book is [more] easier than that one.||easier だけで比較級。more は不要',
+'I have lived here [since] three years.|for|期間の長さには for。since は起点',
+'He can [speaks] three languages.|speak|助動詞のうしろは動詞の原形',
+'How [much] books do you have?|many|数えられる名詞には many',
+'My brother is taller [then] me.|than|比較は than。then は「そのとき」',
+'I was born [at] 2008.|in|年には in',
+'She is [a] honest girl.|an|honest は母音の音で始まるので an',
+'Each of the students [have] a tablet.|has|each は単数あつかい',
+'I didn\'t [went] to school yesterday.|go|didn\'t のうしろは原形',
+'Do you know [what] to use this machine?|how|「使い方」は how to use',
+'The news [were] surprising to everyone.|was|news は単数あつかい',
+'She sings very [good].|well|動詞を修飾するのは副詞 well',
+'Let\'s discuss [about] the problem.||discuss は他動詞。about は不要',
+'I [am] agree with you.||agree は一般動詞。be 動詞は不要',
+'We arrived [to] the station at noon.|at|arrive at 〜「〜に着く」',
+'I\'m [exciting] about the trip.|excited|人が「わくわくしている」は excited',
+],
+[ // level 2
+'If I [am] a bird, I could fly to you.|were|仮定法過去。if 節は過去形（be は were）',
+'The number of tourists [are] increasing.|is|主語は The number（単数）',
+'I am used to [get] up early.|getting|be used to 〜ing「〜に慣れている」',
+'He suggested that she [went] to the doctor.|go|suggest that S (should) 原形',
+'This is the house [which] I was born.|where|場所を表す関係副詞 where（= in which）',
+'I had my bike [steal] yesterday.|stolen|have + O + 過去分詞「O を〜される」',
+'She made me [to] clean the room.||使役 make + O + 原形。to は不要',
+'I\'m interested [on] Japanese history.|in|be interested in 〜',
+'He has [few] money left.|little|数えられない名詞には little',
+'The movie was so [bored] that I fell asleep.|boring|物が「退屈させる」は boring',
+'I wish I [can] speak English fluently.|could|I wish + 仮定法過去',
+'By the time we arrived, the train [has] already left.|had|過去のある時点より前は過去完了',
+'She is [too] kind that everyone likes her.|so|so 〜 that …「とても〜なので…」',
+'It is no use [cry] over spilt milk.|crying|It is no use 〜ing「〜してもむだ」',
+'He objected to [be] treated like a child.|being|object to の to は前置詞。うしろは動名詞',
+'Most [of] students like music.||most + 名詞、または most of the + 名詞',
+'I visited Kyoto three years [before].|ago|現在から見て「〜前」は ago',
+'The police [is] looking for the man.|are|police は複数あつかい',
+'He explained [me] the rule.|to me|explain は二重目的語をとらない。explain A to 人',
+'I prefer tea [than] coffee.|to|prefer A to B',
+'We need more [informations] about the plan.|information|information は数えられない名詞',
+'Remember [locking] the door when you leave.|to lock|「忘れずに〜する」は remember to do',
+'Because it rained, [so] we stayed home.||because と so は同時に使わない',
+'[During] I was in London, I visited many museums.|While|うしろが S+V なら接続詞 while',
+'My teacher advised me [study] harder.|to study|advise + O + to do',
+'Would you mind [open] the window?|opening|mind は動名詞を目的語にとる',
+'The meeting will be [hold] next Monday.|held|受け身は be + 過去分詞',
+'I\'ll call you when I [will] arrive.||時を表す副詞節では未来のことも現在形',
+'She resembles [to] her mother.||resemble は他動詞。前置詞は不要',
+'He entered [into] the room quietly.||「部屋に入る」の enter は他動詞',
+],
+[ // level 3
+'Had I known the truth, I would [tell] you.|have told|仮定法過去完了。would have + 過去分詞',
+'It was not until yesterday [when] I noticed it.|that|It is not until 〜 that …（強調構文）',
+'Scarcely had he arrived [than] it began to rain.|when|Scarcely 〜 when …「〜するとすぐ…」',
+'No sooner had I left home [when] it started raining.|than|No sooner 〜 than …',
+'This model is superior [than] the old one.|to|superior to 〜。than は使わない',
+'I\'d rather you [don\'t] smoke here.|didn\'t|would rather + S + 仮定法過去',
+'The reason I was late is [because] I missed the bus.|that|The reason … is that 〜',
+'[Comparing] with last year, sales have risen.|Compared|主語 sales は「比べられる」側。過去分詞の分詞構文',
+'Never have I [saw] such a beautiful sunset.|seen|have + 過去分詞（倒置でも同じ）',
+'[Seeing] from the sky, the island looks like a heart.|Seen|島は「見られる」側なので過去分詞',
+'The population of Tokyo is larger than [Osaka].|that of Osaka|比べるのは人口どうし。that = the population',
+'He demanded that the report [was] submitted by Friday.|be|demand that S (should) 原形',
+'What do you say to [go] for a walk?|going|What do you say to 〜ing?「〜しませんか」',
+'She has twice as [much] books as I do.|many|数えられる名詞なので as many 〜 as',
+'It is high time you [go] to bed.|went|It is high time + 仮定法過去',
+'The man [whom] I thought was honest deceived me.|who|was の主語にあたるので主格 who（I thought は挿入）',
+'[Despite] he was tired, he kept working.|Although|despite は前置詞。S+V の前は although',
+'Neither of the answers [are] correct.|is|neither of 〜 は原則として単数あつかい',
+'I couldn\'t help [laugh] at his joke.|laughing|cannot help 〜ing「〜せずにいられない」',
+'This museum is worth [visit].|visiting|be worth 〜ing「〜する価値がある」',
+'He is three years senior [than] me.|to|senior to 〜。than は使わない',
+'The more you practice, the [good] you become.|better|the + 比較級, the + 比較級',
+'He was [laughed] by everyone in the class.|laughed at|laugh at を受け身にしても at は残る',
+]];
+
+const $ = id => document.getElementById(id);
+const KEY = 'akapen-best';
+const GAME_TIME = 60, PENALTY = 5;
+let best = 0; try{ best = +localStorage.getItem(KEY) || 0; }catch{}
+let muted = false; try{ muted = localStorage.getItem('akapen-muted') === '1'; }catch{}
+
+// ---- sound ----
+let AC = null;
+function unlock(){ if(!AC){ try{ AC = new (window.AudioContext || window.webkitAudioContext)(); }catch{} } if(AC && AC.state === 'suspended') AC.resume(); }
+function tone(f, d = .1, type = 'triangle', v = .12, delay = 0){
+  if(muted || !AC) return;
+  const t = AC.currentTime + delay, o = AC.createOscillator(), g = AC.createGain();
+  o.type = type; o.frequency.setValueAtTime(f, t);
+  g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(.0008, t + d);
+  o.connect(g).connect(AC.destination); o.start(t); o.stop(t + d + .03);
+}
+function paintMute(){ $('muteBtn').textContent = muted ? '音 OFF' : '音 ON'; $('muteBtn').setAttribute('aria-pressed', String(muted)); }
+$('muteBtn').onclick = () => { muted = !muted; try{ localStorage.setItem('akapen-muted', muted ? '1' : '0'); }catch{} paintMute(); };
+paintMute();
+
+// ---- game state ----
+let pools, timeLeft, score, combo, maxCombo, right, misses, qCount, cur, phase = 'idle', lastNow = 0, revealT = 0, lastBeep = 0;
+
+function parse(s){
+  const [text, fix, note] = s.split('|');
+  const words = text.split(' ');
+  const idx = words.findIndex(w => w.includes('['));
+  const wrong = words[idx].replace(/^[^\[]*\[|\].*$/g, '');
+  return {words: words.map(w => w.replace(/[\[\]]/g, '')), idx, wrong, fix, note};
+}
+function shuffle(a){ for(let i = a.length - 1; i > 0; i--){ const j = Math.random() * (i + 1) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; }
+
+function start(){
+  unlock();
+  pools = BANK.map(l => shuffle(l.map(parse)));
+  timeLeft = GAME_TIME; score = 0; combo = 0; maxCombo = 0; right = 0; misses = []; qCount = 0; lastBeep = 11;
+  $('title').hidden = true; $('result').hidden = true; $('game').hidden = false;
+  nextQ(); lastNow = performance.now(); paintHud();
+}
+// Difficulty ramps with the question number; falls back to any pool that still has items.
+function nextQ(){
+  const want = qCount < 4 ? 0 : qCount < 10 ? 1 : 2;
+  const pool = [pools[want], pools[1], pools[2], pools[0]].find(p => p.length);
+  if(!pool){ finish(); return; }
+  cur = pool.pop(); qCount++; phase = 'play';
+  $('qno').textContent = `第 ${qCount} 問 ・ ${['やさしい', 'ふつう', 'むずかしい'][BANK.findIndex((_, i) => pools[i] === pool)]}`;
+  const box = $('words'); box.className = 'words'; box.innerHTML = '';
+  cur.words.forEach((w, i) => { const b = document.createElement('button'); b.textContent = w; b.onclick = e => { e.stopPropagation(); pick(i, b); }; box.appendChild(b); });
+  $('fix').innerHTML = ''; $('nextHint').hidden = true;
+}
+function esc(s){ return s.replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c])); }
+function pick(i, btn){
+  if(phase !== 'play') return;
+  const ok = i === cur.idx, box = $('words');
+  box.classList.add('done');
+  const fixHtml = `<p class="corr"><s>${esc(cur.wrong)}</s> → ${cur.fix ? esc(cur.fix) : '（とる）'}</p><p class="note">${esc(cur.note)}</p>`;
+  if(ok){
+    combo++; maxCombo = Math.max(maxCombo, combo); right++;
+    const gain = 100 + Math.min(combo - 1, 10) * 20; score += gain;
+    btn.classList.add('hit');
+    $('fix').innerHTML = `<p class="mark good">せいかい +${gain}</p>` + fixHtml;
+    tone(660, .08); tone(990, .14, 'triangle', .12, .07);
+    revealT = 1.5;
+  }else{
+    combo = 0; timeLeft = Math.max(0, timeLeft - PENALTY); misses.push(cur);
+    btn.classList.add('miss'); box.children[cur.idx].classList.add('ans');
+    $('fix').innerHTML = `<p class="mark bad">ざんねん −${PENALTY}秒</p>` + fixHtml;
+    const sh = $('sheet'); sh.classList.remove('shake'); void sh.offsetWidth; sh.classList.add('shake');
+    tone(160, .25, 'sawtooth', .1);
+    revealT = 4;
+  }
+  phase = 'reveal'; $('nextHint').hidden = false; paintHud();
+}
+function advance(){ if(phase !== 'reveal') return; if(timeLeft <= 0) finish(); else nextQ(); }
+$('sheet').addEventListener('click', advance);
+addEventListener('keydown', e => { if((e.code === 'Space' || e.code === 'Enter') && phase === 'reveal'){ e.preventDefault(); advance(); } });
+
+function paintHud(){
+  $('time').textContent = timeLeft.toFixed(1);
+  $('score').textContent = score;
+  $('combo').textContent = combo;
+  $('hudTime').classList.toggle('low', timeLeft <= 10);
+  $('barFill').style.width = (timeLeft / GAME_TIME * 100) + '%';
+}
+function tick(now){
+  const dt = Math.min(.1, (now - lastNow) / 1000); lastNow = now;
+  if(phase === 'play'){
+    timeLeft = Math.max(0, timeLeft - dt);
+    if(timeLeft <= 10 && Math.ceil(timeLeft) < lastBeep){ lastBeep = Math.ceil(timeLeft); tone(880, .05, 'square', .05); }
+    paintHud();
+    if(timeLeft <= 0) finish();
+  }else if(phase === 'reveal'){
+    revealT -= dt; if(revealT <= 0) advance();
+  }
+  requestAnimationFrame(tick);
+}
+function finish(){
+  if(phase === 'idle') return;
+  phase = 'idle';
+  const isBest = score > best;
+  if(isBest){ best = score; try{ localStorage.setItem(KEY, String(best)); }catch{} }
+  $('game').hidden = true; $('result').hidden = false;
+  $('finalScore').textContent = score;
+  const r = right >= 18 ? '添削マスター' : right >= 13 ? 'ベテラン添削者' : right >= 8 ? 'たよれる添削者' : right >= 4 ? '見習い添削者' : 'ウォーミングアップ';
+  $('rank').textContent = (isBest && score > 0 ? 'ベスト更新！ ' : '') + r;
+  $('stRight').textContent = right; $('stMiss').textContent = misses.length; $('stCombo').textContent = maxCombo; $('stBest').textContent = best;
+  $('review').hidden = !misses.length;
+  $('reviewList').innerHTML = misses.map(m => `<li><p class="en">${m.words.map((w, i) => i === m.idx ? `<u>${esc(w)}</u>${m.fix ? ` <em>${esc(m.fix)}</em>` : ''}` : esc(w)).join(' ')}</p><p class="jp">${esc(m.note)}</p></li>`).join('');
+  $('bestTitle').textContent = best;
+  [523, 659, 784, 1046].forEach((f, i) => tone(f, .2, 'triangle', .1, i * .12));
+}
+$('startBtn').onclick = start; $('againBtn').onclick = start;
+$('bestTitle').textContent = best;
+requestAnimationFrame(tick);
+</script>
+</body>
+</html>

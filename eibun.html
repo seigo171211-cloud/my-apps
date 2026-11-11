@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>英文メーター</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;800&family=Zen+Kaku+Gothic+New:wght@400;500&family=Lora:wght@500;600&display=swap">
+<style>
+/* Layout: header + two tabs. かぞえる = text, word-limit meter, stats, per-sentence list. くらべる = before/after text and a word-level diff. */
+:root{
+  --bg:#f1efea; --surface:#ffffff; --sunken:#e7e4dd; --fg:#18171c; --muted:#6c6975;
+  --line:#d9d5cc; --accent:#3f6fd8; --accent-ink:#ffffff; --ok:#1f8a6b; --warn:#c48a1c; --bad:#d6342a;
+  --del:#fde3df; --ins:#d9f2e8;
+  --f-display:"M PLUS Rounded 1c","Hiragino Maru Gothic ProN",system-ui,sans-serif;
+  --f-body:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",system-ui,sans-serif;
+  --f-en:"Lora",Georgia,"Times New Roman",serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#131217; --surface:#1c1b22; --sunken:#0e0d12; --fg:#f0eee8; --muted:#8f8c99;
+  --line:#2c2a35; --accent:#7ba3ff; --accent-ink:#07132b; --ok:#4fd1a8; --warn:#f2b53c; --bad:#ff6b5e;
+  --del:#4a2320; --ins:#173b30; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#131217; --surface:#1c1b22; --sunken:#0e0d12; --fg:#f0eee8; --muted:#8f8c99;
+  --line:#2c2a35; --accent:#7ba3ff; --accent-ink:#07132b; --ok:#4fd1a8; --warn:#f2b53c; --bad:#ff6b5e;
+  --del:#4a2320; --ins:#173b30; color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+button,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer;border:0;background:none}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.wrap{max-width:720px;margin:0 auto;padding:calc(16px + env(safe-area-inset-top,0px)) 16px calc(48px + env(safe-area-inset-bottom,0px))}
+header{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:16px}
+header h1{font-family:var(--f-display);font-weight:800;font-size:22px;margin:0;letter-spacing:.02em}
+header a{color:var(--muted);font-size:13px;text-decoration:none;white-space:nowrap}
+.tabs{display:grid;grid-template-columns:1fr 1fr;gap:3px;padding:3px;background:var(--sunken);border-radius:14px;margin-bottom:18px}
+.tabs button{padding:10px 4px;border-radius:11px;font-size:14px;color:var(--muted);font-weight:500}
+.tabs button[aria-selected="true"]{background:var(--surface);color:var(--fg);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+h2{font-size:12px;letter-spacing:.12em;color:var(--muted);font-weight:500;margin:22px 0 8px;display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+h2 small{letter-spacing:.02em;font-size:12px}
+h2 button{color:var(--muted);text-decoration:underline;text-underline-offset:3px;font-size:12px;letter-spacing:0}
+textarea{width:100%;padding:13px 14px;border-radius:14px;border:1px solid var(--line);background:var(--surface);resize:vertical;font-family:var(--f-en);font-size:17px;line-height:1.6;min-height:150px}
+textarea.short{min-height:96px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px}
+.head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.big{font-family:var(--f-display);font-weight:800;font-size:46px;line-height:1;font-variant-numeric:tabular-nums}
+.big small{font-size:15px;font-weight:500;font-family:var(--f-body);color:var(--muted);margin-left:4px}
+.verdict{font-family:var(--f-display);font-weight:800;font-size:15px}
+.verdict.ok{color:var(--ok)} .verdict.warn{color:var(--warn)} .verdict.bad{color:var(--bad)}
+.meter{position:relative;height:14px;border-radius:7px;background:var(--sunken);margin:14px 0 6px;overflow:hidden}
+.meter .zone{position:absolute;top:0;bottom:0;background:color-mix(in srgb,var(--ok) 28%,transparent)}
+.meter .fill{position:absolute;top:0;bottom:0;left:0;border-radius:7px;background:var(--accent);transition:width .15s}
+.meter .fill.ok{background:var(--ok)} .meter .fill.bad{background:var(--bad)}
+.range{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13.5px;color:var(--muted);margin-top:12px}
+.range input{width:74px;padding:8px 10px;border-radius:10px;border:1px solid var(--line);background:var(--bg);text-align:center}
+.chip{font-size:13px;padding:6px 11px;border-radius:999px;background:var(--bg);border:1px solid var(--line);color:var(--muted)}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:14px}
+.stats div{background:var(--bg);border-radius:12px;padding:9px 6px;text-align:center;font-size:11.5px;color:var(--muted)}
+.stats b{display:block;font-family:var(--f-display);font-weight:800;font-size:20px;color:var(--fg);font-variant-numeric:tabular-nums}
+.rep{display:flex;flex-wrap:wrap;gap:6px}
+.rep span{font-family:var(--f-en);font-size:14.5px;padding:4px 10px;border-radius:999px;background:var(--surface);border:1px solid var(--line)}
+.rep span b{font-family:var(--f-body);font-weight:500;color:var(--muted);font-size:12px;margin-left:4px}
+.sent{list-style:none;margin:0;padding:0}
+.sent li{display:grid;grid-template-columns:44px 1fr;gap:10px;padding:10px 0;border-top:1px solid var(--line);align-items:baseline}
+.sent li:first-child{border-top:0}
+.sent .n{font-family:var(--f-display);font-weight:800;text-align:right;font-variant-numeric:tabular-nums}
+.sent .n.long{color:var(--bad)}
+.sent .t{font-family:var(--f-en);font-size:15.5px}
+.none{color:var(--muted);font-size:13.5px}
+.note{font-size:12.5px;color:var(--muted);margin:8px 2px 0}
+.diff{font-family:var(--f-en);font-size:18px;line-height:2;white-space:pre-wrap;word-break:break-word}
+.diff del{background:var(--del);color:var(--bad);text-decoration-thickness:2px;border-radius:5px;padding:2px 4px}
+.diff ins{background:var(--ins);color:var(--ok);text-decoration:none;font-weight:600;border-radius:5px;padding:2px 4px}
+.row{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;align-items:center}
+.btn{padding:10px 16px;border-radius:12px;background:var(--surface);border:1px solid var(--line);font-size:14px}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-family:var(--f-display);font-weight:800}
+.btn:active{transform:scale(.98)}
+.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:9px 18px;border-radius:999px;font-size:14px;z-index:50;pointer-events:none}
+@media (prefers-reduced-motion:reduce){.meter .fill{transition:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>英文メーター</h1>
+    <a href="/">← アプリ一覧</a>
+  </header>
+  <div class="tabs" role="tablist">
+    <button role="tab" id="tabCount" aria-selected="true" aria-controls="pCount">かぞえる</button>
+    <button role="tab" id="tabDiff" aria-selected="false" aria-controls="pDiff">くらべる</button>
+  </div>
+
+  <section id="pCount" role="tabpanel" aria-labelledby="tabCount">
+    <textarea id="text" spellcheck="false" placeholder="ここに英文を貼りつけ、または入力"></textarea>
+    <h2><span>語数</span><button id="clearText">文を消す</button></h2>
+    <div class="card">
+      <div class="head">
+        <div class="big"><span id="words">0</span><small>語</small></div>
+        <div class="verdict" id="verdict"></div>
+      </div>
+      <div class="meter" id="meter"><div class="zone" id="zone"></div><div class="fill" id="fill"></div></div>
+      <div class="range">
+        指定 <input type="number" id="min" min="0" max="9999" inputmode="numeric" placeholder="下限" aria-label="下限の語数"> 〜
+        <input type="number" id="max" min="0" max="9999" inputmode="numeric" placeholder="上限" aria-label="上限の語数"> 語
+        <button class="chip" data-r="60,80">60–80</button><button class="chip" data-r="80,100">80–100</button><button class="chip" data-r="100,120">100–120</button><button class="chip" data-r=",">なし</button>
+      </div>
+      <div class="stats">
+        <div><b id="stSent">0</b>文</div><div><b id="stAvg">0</b>語／文</div><div><b id="stPara">0</b>段落</div><div><b id="stChar">0</b>文字</div>
+      </div>
+    </div>
+    <p class="note">数え方：英数字のまとまりを1語。don't や well-known は1語、数字も1語として数えます。</p>
+
+    <h2><span>くり返しの多い語</span><small>3回以上（the や is などは除く）</small></h2>
+    <div class="rep" id="rep"></div>
+
+    <h2><span>1文ごとの語数</span><small>30語以上は赤</small></h2>
+    <div class="card"><ul class="sent" id="sent"></ul></div>
+  </section>
+
+  <section id="pDiff" role="tabpanel" aria-labelledby="tabDiff" hidden>
+    <h2 style="margin-top:0"><span>もとの文</span></h2>
+    <textarea id="before" class="short" spellcheck="false" placeholder="答案の英文"></textarea>
+    <h2><span>直した文</span></h2>
+    <textarea id="after" class="short" spellcheck="false" placeholder="添削後の英文"></textarea>
+    <h2><span>ちがい</span><small id="diffInfo"></small></h2>
+    <div class="card"><div class="diff" id="diff"></div></div>
+    <div class="row">
+      <button class="btn primary" id="copyDiff">ちがいをコピー</button>
+      <button class="btn" id="swap">上下を入れかえ</button>
+      <button class="btn" id="clearDiff">消す</button>
+    </div>
+    <p class="note">コピーすると、消した語は [-語-]、足した語は {+語+} の形のテキストになります。</p>
+  </section>
+</div>
+
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+const KEY = 'eibun-v1';
+const esc = s => s.replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
+const WORD = /[A-Za-z0-9]+(?:['’\-][A-Za-z0-9]+)*/g;
+const STOP = new Set(('a an the and or but so if of to in on at for from with by as is are was were be been being am do does did have has had ' +
+  'i you he she it we they me him her us them my your his its our their this that these those there here not no can could will would should may might must ' +
+  'what which who whom when where why how than then very more most much many some any all also too just about into over up out s t').split(' '));
+
+let S = {text: '', min: '', max: '', before: '', after: '', tab: 'count'};
+try{ Object.assign(S, JSON.parse(localStorage.getItem(KEY)) || {}); }catch{}
+const save = () => { try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch{} };
+
+function toast(msg){
+  document.querySelectorAll('.toast').forEach(t => t.remove());
+  const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; t.setAttribute('role', 'status');
+  document.body.appendChild(t); setTimeout(() => t.remove(), 1600);
+}
+const count = s => (s.match(WORD) || []).length;
+// Sentence = up to . ! ? (plus closing quotes/brackets) followed by whitespace; common abbreviations do not end one.
+function sentences(text){
+  const out = [];
+  for(const para of text.split(/\n+/)){
+    const safe = para.replace(/\b(?:Mr|Mrs|Ms|Dr|Prof|St|vs|etc|e\.g|i\.e|U\.S|U\.K|a\.m|p\.m)\.|\d\.\d/gi, m => m.replace(/\./g, '\u0000'));
+    for(const m of safe.match(/[^.!?]+(?:[.!?]+["'”’)\]]*|$)/g) || []){ const t = m.replace(/\u0000/g, '.').trim(); if(count(t)) out.push(t); }
+  }
+  return out;
+}
+
+function renderCount(){
+  const text = S.text, n = count(text), sents = sentences(text);
+  const lo = S.min === '' ? null : +S.min, hi = S.max === '' ? null : +S.max;
+  $('words').textContent = n;
+  $('stSent').textContent = sents.length;
+  $('stAvg').textContent = sents.length ? (n / sents.length).toFixed(1) : 0;
+  $('stPara').textContent = text.split(/\n\s*\n|\n/).filter(p => p.trim()).length;
+  $('stChar').textContent = text.replace(/\s/g, '').length;
+
+  const v = $('verdict'), fill = $('fill'), zone = $('zone'), has = lo !== null || hi !== null;
+  $('meter').hidden = !has;
+  let cls = '', msg = '';
+  if(has && n){
+    if(lo !== null && n < lo){ cls = 'warn'; msg = `あと ${lo - n} 語`; }
+    else if(hi !== null && n > hi){ cls = 'bad'; msg = `${n - hi} 語オーバー`; }
+    else{ cls = 'ok'; msg = '指定の範囲内'; }
+  }
+  v.className = 'verdict ' + cls; v.textContent = msg;
+  if(has){
+    const top = Math.max((hi !== null ? hi : lo) * 1.25, n, 1);
+    fill.style.width = Math.min(100, n / top * 100) + '%'; fill.className = 'fill ' + (cls === 'warn' ? '' : cls);
+    const a = lo !== null ? lo : 0, b = hi !== null ? hi : top;
+    zone.style.left = (a / top * 100) + '%'; zone.style.width = (Math.max(0, b - a) / top * 100) + '%';
+  }
+
+  const freq = new Map();
+  for(const w of text.match(WORD) || []){ const k = w.toLowerCase().replace(/’/g, "'"); if(k.length < 2 || STOP.has(k) || /^\d+$/.test(k)) continue; freq.set(k, (freq.get(k) || 0) + 1); }
+  const rep = [...freq].filter(([, c]) => c >= 3).sort((a, b) => b[1] - a[1]).slice(0, 12);
+  $('rep').innerHTML = rep.length ? rep.map(([w, c]) => `<span>${esc(w)}<b>×${c}</b></span>`).join('') : '<p class="none" style="margin:0">いまのところありません</p>';
+  $('sent').innerHTML = sents.length ? sents.map(s => { const c = count(s); return `<li><span class="n${c >= 30 ? ' long' : ''}">${c}</span><span class="t">${esc(s)}</span></li>`; }).join('') : '<li class="none" style="display:block">英文を入れると、1文ずつの語数が出ます</li>';
+}
+
+// ---- word-level diff (longest common subsequence) ----
+function diffWords(a, b){
+  const A = a.trim().split(/\s+/).filter(Boolean), B = b.trim().split(/\s+/).filter(Boolean), n = A.length, m = B.length;
+  if(n * m > 4e6) return null;
+  const L = Array.from({length: n + 1}, () => new Uint16Array(m + 1));
+  for(let i = n - 1; i >= 0; i--) for(let j = m - 1; j >= 0; j--) L[i][j] = A[i] === B[j] ? L[i + 1][j + 1] + 1 : Math.max(L[i + 1][j], L[i][j + 1]);
+  const ops = []; let i = 0, j = 0;
+  const push = (t, w) => { const last = ops[ops.length - 1]; if(last && last.t === t) last.w.push(w); else ops.push({t, w: [w]}); };
+  while(i < n && j < m){
+    if(A[i] === B[j]){ push('=', A[i]); i++; j++; }
+    else if(L[i + 1][j] >= L[i][j + 1]) push('-', A[i++]);
+    else push('+', B[j++]);
+  }
+  while(i < n) push('-', A[i++]);
+  while(j < m) push('+', B[j++]);
+  return ops;
+}
+let lastOps = null;
+function renderDiff(){
+  const el = $('diff'), info = $('diffInfo');
+  lastOps = null; info.textContent = '';
+  if(!S.before.trim() || !S.after.trim()){ el.innerHTML = '<span class="none" style="font-family:var(--f-body)">もとの文と直した文を入れると、変わった語に色がつきます</span>'; return; }
+  const ops = diffWords(S.before, S.after);
+  if(!ops){ el.innerHTML = '<span class="none" style="font-family:var(--f-body)">文が長すぎてくらべられません。短く分けてください</span>'; return; }
+  lastOps = ops;
+  let del = 0, ins = 0;
+  el.innerHTML = ops.map(o => { const t = esc(o.w.join(' ')); if(o.t === '-'){ del += o.w.length; return `<del>${t}</del>`; } if(o.t === '+'){ ins += o.w.length; return `<ins>${t}</ins>`; } return t; }).join(' ');
+  info.textContent = del || ins ? `消した語 ${del} ・ 足した語 ${ins}` : 'ちがいはありません';
+}
+
+// ---- wiring ----
+function setTab(t){
+  S.tab = t; save();
+  $('tabCount').setAttribute('aria-selected', String(t === 'count')); $('tabDiff').setAttribute('aria-selected', String(t === 'diff'));
+  $('pCount').hidden = t !== 'count'; $('pDiff').hidden = t !== 'diff';
+}
+$('tabCount').onclick = () => setTab('count'); $('tabDiff').onclick = () => setTab('diff');
+$('text').value = S.text; $('min').value = S.min; $('max').value = S.max; $('before').value = S.before; $('after').value = S.after;
+$('text').addEventListener('input', e => { S.text = e.target.value; save(); renderCount(); });
+for(const k of ['min', 'max']) $(k).addEventListener('input', e => { S[k] = e.target.value === '' ? '' : String(Math.max(0, Math.min(9999, Math.round(+e.target.value) || 0))); save(); renderCount(); });
+document.querySelectorAll('[data-r]').forEach(b => b.onclick = () => { [S.min, S.max] = b.dataset.r.split(','); $('min').value = S.min; $('max').value = S.max; save(); renderCount(); });
+$('clearText').onclick = () => { if(!S.text) return; S.text = ''; $('text').value = ''; save(); renderCount(); $('text').focus(); };
+$('before').addEventListener('input', e => { S.before = e.target.value; save(); renderDiff(); });
+$('after').addEventListener('input', e => { S.after = e.target.value; save(); renderDiff(); });
+$('swap').onclick = () => { [S.before, S.after] = [S.after, S.before]; $('before').value = S.before; $('after').value = S.after; save(); renderDiff(); };
+$('clearDiff').onclick = () => { S.before = S.after = ''; $('before').value = $('after').value = ''; save(); renderDiff(); };
+$('copyDiff').onclick = async () => {
+  if(!lastOps){ toast('くらべる文を入れてください'); return; }
+  const text = lastOps.map(o => o.t === '-' ? `[-${o.w.join(' ')}-]` : o.t === '+' ? `{+${o.w.join(' ')}+}` : o.w.join(' ')).join(' ');
+  let ok = false;
+  try{ await navigator.clipboard.writeText(text); ok = true; }
+  catch{
+    const ta = document.createElement('textarea'); ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select(); try{ ok = document.execCommand('copy'); }catch{} ta.remove();
+  }
+  toast(ok ? 'コピーしました' : 'コピーできませんでした');
+};
+setTab(S.tab === 'diff' ? 'diff' : 'count'); renderCount(); renderDiff();
+</script>
+</body>
+</html>
