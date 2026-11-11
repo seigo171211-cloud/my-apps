@@ -462,11 +462,9 @@ kbd { font-family: var(--font-body); border: 1px solid color-mix(in srgb, var(--
     ctx.clearRect(0, 0, W, H);
     drawBox();
 
-    // aim guide + held snack
+    // held snack
     if (running && !over) {
       const x = clampAim(aimX);
-      ctx.strokeStyle = 'rgba(255,207,110,.25)'; ctx.lineWidth = 2; ctx.setLineDash([3, 6]);
-      ctx.beginPath(); ctx.moveTo(x, DROP_Y); ctx.lineTo(x, FLOOR); ctx.stroke(); ctx.setLineDash([]);
       drawSnack(ctx, x, DROP_Y, LV[cur].r, cur, cooldown > 0 ? 0.35 : 1);
     }
 
@@ -532,9 +530,21 @@ kbd { font-family: var(--font-body); border: 1px solid color-mix(in srgb, var(--
 
   // ---- Input ----
   function toWorld(e) { const rc = cv.getBoundingClientRect(); return (e.clientX - rc.left) / scale; }
-  cv.addEventListener('pointermove', e => { aimX = toWorld(e); });
-  cv.addEventListener('pointerdown', e => { aimX = toWorld(e); if (e.pointerType !== 'mouse') cv.setPointerCapture(e.pointerId); });
-  cv.addEventListener('pointerup', e => { aimX = toWorld(e); drop(); });
+  // The whole screen is the control surface; buttons and dialogs keep their own taps.
+  const isUi = e => e.target.closest && e.target.closest('button, .card');
+  let aiming = null;
+  document.addEventListener('pointermove', e => {
+    if (e.pointerType === 'mouse' || aiming === e.pointerId) aimX = toWorld(e);
+  });
+  document.addEventListener('pointerdown', e => {
+    if (isUi(e)) return;
+    aiming = e.pointerId; aimX = toWorld(e);
+  });
+  document.addEventListener('pointerup', e => {
+    if (aiming !== e.pointerId) return;
+    aiming = null; aimX = toWorld(e); drop();
+  });
+  document.addEventListener('pointercancel', () => { aiming = null; });
   const keys = {};
   window.addEventListener('keydown', e => {
     keys[e.key] = true;
