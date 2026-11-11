@@ -21,7 +21,7 @@ body{margin:0;background:#05060f;color:var(--ink);font-family:var(--jp);font-wei
   -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
 #game{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none}
 #fx{position:fixed;inset:0;pointer-events:none;opacity:0;background:radial-gradient(ellipse at center,transparent 45%,rgba(255,30,70,.55) 100%)}
-#hud{position:fixed;inset:0;pointer-events:none;font-family:var(--num);
+#hud{position:fixed;inset:0;z-index:2;pointer-events:none;font-family:var(--num);
   padding:max(12px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(14px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))}
 #hud>*{position:absolute}
 .tl{top:inherit;left:max(16px,env(safe-area-inset-left));top:max(12px,env(safe-area-inset-top))}
@@ -142,6 +142,9 @@ body.touch .keys.pc,body:not(.touch) .keys.sp{display:none}
 .perk em{position:absolute;right:12px;top:12px;font:700 11px var(--num);font-style:normal;color:var(--am);letter-spacing:.1em}
 .set{display:flex;align-items:center;justify-content:center;gap:12px;margin:0 0 22px;font-size:13px;color:var(--muted)}
 .set input{width:180px;accent-color:var(--cy)}
+.set input[type=checkbox]{width:22px;height:22px;margin:0}
+body:not(.touch) .touchOnly{display:none}
+#ovTitle .set{margin:20px 0 0;color:var(--ink)}
 @media (max-width:640px){.perks{grid-template-columns:1fr;gap:8px}.perk{padding:12px 14px}.perk b{margin:4px 0 3px}.keys{grid-template-columns:repeat(2,auto)}.stats{gap:18px}}
 @media (max-height:480px){h1{font-size:34px;margin-bottom:6px}.sub{margin-bottom:12px;font-size:13px}.keys{margin-top:14px}.perks{grid-template-columns:repeat(3,1fr)}.best{margin-top:10px}}
 @media (prefers-reduced-motion:reduce){.btn,.perk{transition:none}}
@@ -205,8 +208,9 @@ body.touch .keys.pc,body:not(.touch) .keys.sp{display:none}
     </ul>
     <ul class="keys sp">
       <li><kbd>左側</kbd>スライドで移動</li><li><kbd>右側</kbd>スライドで照準</li>
-      <li><kbd>オート</kbd>敵を狙うと自動で射撃</li><li><kbd>FIRE</kbd>押しながら狙い撃ち</li>
+      <li><kbd>オート</kbd>敵を狙うと自動で射撃（切替可）</li><li><kbd>FIRE</kbd>押しながら狙い撃ち</li>
     </ul>
+    <label class="set touchOnly"><input type="checkbox" class="autoChk" checked>敵を狙うと自動で射撃する</label>
     <p class="best">BEST<b id="bestT">0</b></p>
   </div>
 </div>
@@ -216,6 +220,7 @@ body.touch .keys.pc,body:not(.touch) .keys.sp{display:none}
     <h2>PAUSE</h2>
     <p class="sub">ひと休み。</p>
     <label class="set">照準の感度<input type="range" id="sens" min="0.3" max="2.5" step="0.05" value="1"></label>
+    <label class="set touchOnly"><input type="checkbox" class="autoChk" checked>敵を狙うと自動で射撃する</label>
     <div class="row"><button class="btn" id="resumeBtn">つづける</button><button class="btn ghost" id="restartBtn">最初から</button><a class="btn ghost" href="/">アプリ一覧</a></div>
   </div>
 </div>
@@ -607,7 +612,7 @@ function setMute(m){AU.muted=m;store.set('hound_mute',m?'1':'0');if(AU.master)AU
 setMute(AU.muted);
 
 // ───────────────────────── game state
-const G={state:'title',time:0,wave:0,score:0,kills:0,combo:0,comboT:0,ts:1,phase:'idle',phaseT:0,queue:[],spawnT:0,best:+store.get('hound_best',0)||0,sens:+store.get('hound_sens',1)||1,boss:null};
+const G={state:'title',time:0,wave:0,score:0,kills:0,combo:0,comboT:0,ts:1,phase:'idle',phaseT:0,queue:[],spawnT:0,best:+store.get('hound_best',0)||0,sens:+store.get('hound_sens',1)||1,auto:store.get('hound_auto','1')==='1',boss:null};
 const BASE=()=>({dmg:12,rate:9.5,mag:32,reload:1.35,pierce:0,boom:0,chain:0,leech:0,crit:2,spread:1,dashCd:1.5,speed:7.2,grenCd:7,grenR:5.5,grenDmg:150,pellets:1,maxHp:100,maxSh:40,shRate:18,shDelay:4});
 const P={pos:new V3(0,0,0),vel:new V3(),s:BASE(),hp:100,sh:40,shT:0,ammo:32,reloadT:0,fireT:0,bloom:0,dashT:0,dashCd:0,dashDir:new V3(),grenCd:0,alive:true,inv:0,ads:0,phase:0,kick:0,perks:{}};
 const E=[],ORBS=[],SHOCKS=[],GRENS=[],PICK=[],SPAWNS=[];
@@ -1034,7 +1039,7 @@ function updatePlayer(dt){
   if(P.reloadT>0){P.reloadT-=dt;if(P.reloadT<=0){P.ammo=S.mag;$('rl').hidden=true}}
   if(IN.reload){IN.reload=false;startReload()}
   if(IN.gren){IN.gren=false;throwGrenade()}
-  const auto=isTouch&&!!curTarget&&curTarget.auto;
+  const auto=isTouch&&G.auto&&!!curTarget&&curTarget.auto;
   if((IN.fire||IN.tFire||auto)&&P.dashT<=0&&P.reloadT<=0){
     if(P.ammo<=0)startReload();
     else while(P.fireT<=0&&P.ammo>0)fireShot();
@@ -1229,6 +1234,8 @@ $('restartBtn').addEventListener('click',newGame);$('resumeBtn').addEventListene
 $('pauseBtn').addEventListener('click',pause);$('muteBtn').addEventListener('click',()=>{auInit();setMute(!AU.muted)});
 $('sens').value=G.sens;$('sens').addEventListener('input',e=>{G.sens=+e.target.value;store.set('hound_sens',G.sens)});
 $('bestT').textContent=G.best.toLocaleString();
+{const cs=[...document.querySelectorAll('.autoChk')];const sync=()=>cs.forEach(c=>c.checked=G.auto);sync();
+  cs.forEach(c=>c.addEventListener('change',()=>{G.auto=c.checked;store.set('hound_auto',G.auto?'1':'0');sync()}))}
 
 // ───────────────────────── input
 addEventListener('keydown',e=>{
