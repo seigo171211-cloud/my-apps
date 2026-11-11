@@ -55,10 +55,14 @@ h1 {
   font-size: 1.35rem; line-height: 1.1; margin: 0; letter-spacing: .02em;
   color: var(--lamp);
 }
+.titles { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.back { font-size: .72rem; color: var(--muted); text-decoration: none; letter-spacing: .04em; align-self: flex-start; padding: 2px 0; }
+.back:hover { color: var(--ink); }
+.back:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; border-radius: 4px; }
 h1 small { display: block; font-family: var(--font-body); font-size: .7rem; color: var(--muted); letter-spacing: .08em; font-weight: 500; }
 .stats { display: flex; gap: 14px; align-items: center; }
 .stat { display: flex; flex-direction: column; align-items: flex-end; }
-.stat .label { font-size: .65rem; color: var(--muted); letter-spacing: .12em; }
+.stat .label { white-space: nowrap; font-size: .65rem; color: var(--muted); letter-spacing: .12em; }
 .stat .value { font-family: var(--font-display); font-size: 1.25rem; font-variant-numeric: tabular-nums; line-height: 1.1; }
 #nextCanvas { width: 44px; height: 44px; }
 .stage { position: relative; flex: 1 1 auto; min-height: 0; width: 100%; display: flex; justify-content: center; align-items: flex-start; }
@@ -94,7 +98,10 @@ kbd { font-family: var(--font-body); border: 1px solid color-mix(in srgb, var(--
 
 <div class="app">
   <header>
-    <h1>おつかれドロップ<small>同じおやつをくっつけて、ケーキを目指そう</small></h1>
+    <div class="titles">
+      <a class="back" href="/">← アプリ一覧</a>
+      <h1>おつかれドロップ<small>同じおやつをくっつけて、ケーキを目指そう</small></h1>
+    </div>
     <div class="stats">
       <div class="stat"><span class="label">スコア</span><span class="value" id="score">0</span></div>
       <div class="stat"><span class="label">ベスト</span><span class="value" id="best">0</span></div>
@@ -531,7 +538,7 @@ kbd { font-family: var(--font-body); border: 1px solid color-mix(in srgb, var(--
   // ---- Input ----
   function toWorld(e) { const rc = cv.getBoundingClientRect(); return (e.clientX - rc.left) / scale; }
   // The whole screen is the control surface; buttons and dialogs keep their own taps.
-  const isUi = e => e.target.closest && e.target.closest('button, .card');
+  const isUi = e => e.target.closest && e.target.closest('button, a, .card');
   let aiming = null;
   document.addEventListener('pointermove', e => {
     if (e.pointerType === 'mouse' || aiming === e.pointerId) aimX = toWorld(e);
