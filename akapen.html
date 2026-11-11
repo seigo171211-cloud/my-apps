@@ -8,19 +8,19 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;800&family=Zen+Kaku+Gothic+New:wght@400;500&family=Lora:wght@500;600&display=swap">
 <style>
-/* Layout: header, HUD (time / score / combo), the answer sheet with tappable words, then title / result overlays. */
+/* Layout: header, HUD (time / score / combo), the answer sheet with tappable words or underlined parts, then title / result panels. */
 :root{
-  --bg:#efe9dc; --paper:#fffdf7; --rule:#dfe6f2; --fg:#1d1b22; --muted:#756f66; --line:#d8d0c0;
+  --bg:#efe9dc; --paper:#fffdf7; --rule:#dfe6f2; --fg:#1d1b22; --muted:#756f66; --line:#d8d0c0; --sunken:#e4dccb;
   --red:#d6342a; --red-soft:#fde3df; --ok:#1f8a6b; --ok-soft:#d9f2e8; --ink:#ffffff;
   --f-display:"M PLUS Rounded 1c","Hiragino Maru Gothic ProN",system-ui,sans-serif;
   --f-body:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",system-ui,sans-serif;
   --f-en:"Lora",Georgia,"Times New Roman",serif;
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
-  --bg:#15131a; --paper:#201d27; --rule:#2b2835; --fg:#f1ede4; --muted:#9a94a3; --line:#35313f;
+  --bg:#15131a; --paper:#201d27; --rule:#2b2835; --fg:#f1ede4; --muted:#9a94a3; --line:#35313f; --sunken:#0e0d12;
   --red:#ff6b5e; --red-soft:#4a2320; --ok:#4fd1a8; --ok-soft:#173b30; --ink:#1a0d0b; color-scheme:dark}}
 :root[data-theme="dark"]{
-  --bg:#15131a; --paper:#201d27; --rule:#2b2835; --fg:#f1ede4; --muted:#9a94a3; --line:#35313f;
+  --bg:#15131a; --paper:#201d27; --rule:#2b2835; --fg:#f1ede4; --muted:#9a94a3; --line:#35313f; --sunken:#0e0d12;
   --red:#ff6b5e; --red-soft:#4a2320; --ok:#4fd1a8; --ok-soft:#173b30; --ink:#1a0d0b; color-scheme:dark}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
@@ -39,21 +39,29 @@ header a,header button{color:var(--muted);font-size:13px;text-decoration:none;wh
 .hud b{font-family:var(--f-display);font-weight:800;font-size:24px;line-height:1.2;font-variant-numeric:tabular-nums}
 .hud .low b{color:var(--red)}
 .bar{height:6px;border-radius:3px;background:var(--line);overflow:hidden;margin-bottom:16px}
-.bar i{display:block;height:100%;background:var(--red);transform-origin:left;width:100%}
+.bar i{display:block;height:100%;background:var(--red);width:100%}
 
 .sheet{position:relative;background:var(--paper);border:1px solid var(--line);border-radius:18px;padding:22px 18px 18px;min-height:300px;
   background-image:linear-gradient(var(--rule) 1px,transparent 1px);background-size:100% 36px;background-position:0 20px;box-shadow:0 10px 30px -20px rgba(0,0,0,.4)}
+.sheet.plain{background-image:none}
 .sheet.shake{animation:shake .3s}
 @keyframes shake{25%{transform:translateX(-7px)}50%{transform:translateX(6px)}75%{transform:translateX(-4px)}}
 .qno{font-size:12px;letter-spacing:.12em;color:var(--muted);margin:0 0 14px}
+/* 標準: every word is a button */
 .words{display:flex;flex-wrap:wrap;gap:8px 6px;font-family:var(--f-en);font-size:clamp(21px,5.6vw,27px);line-height:1.3}
 .words button{padding:5px 7px;border-radius:9px;border:1.5px solid transparent;transition:background .12s,transform .08s}
 .words button:hover{background:var(--rule)}
 .words button:active{transform:scale(.95)}
-.words button.hit{background:var(--ok-soft);border-color:var(--ok);color:var(--ok)}
-.words button.miss{background:var(--red-soft);border-color:var(--red);color:var(--red)}
-.words button.ans{border-color:var(--red);color:var(--red);text-decoration:line-through;text-decoration-thickness:2px}
-.words.done button{pointer-events:none}
+/* 難関: a passage with five underlined, lettered parts */
+.passage{font-family:var(--f-en);font-size:clamp(16.5px,4.4vw,19px);line-height:2.05;margin:0}
+.passage .seg{cursor:pointer;border-bottom:2px solid var(--red);padding:3px 2px 1px;border-radius:6px 6px 0 0;transition:background .12s}
+.passage .seg::before{content:"(" attr(data-l) ")";font-family:var(--f-body);font-size:.68em;color:var(--red);margin-right:3px;vertical-align:.15em}
+.passage .seg:hover{background:var(--rule)}
+.hit{background:var(--ok-soft)!important;border-color:var(--ok)!important;color:var(--ok)}
+.miss{background:var(--red-soft)!important;border-color:var(--red)!important;color:var(--red)}
+.words .ans{border-color:var(--red);color:var(--red);text-decoration:line-through;text-decoration-thickness:2px}
+.passage .ans{background:var(--red-soft);color:var(--red);text-decoration:line-through;text-decoration-thickness:2px}
+.done button,.done .seg{pointer-events:none}
 .fix{margin-top:18px;min-height:76px}
 .fix p{margin:0}
 .fix .corr{font-family:var(--f-en);font-size:20px;color:var(--red);font-weight:600}
@@ -64,10 +72,13 @@ header a,header button{color:var(--muted);font-size:13px;text-decoration:none;wh
 .next{font-size:12px;color:var(--muted);text-align:right;margin-top:8px}
 
 .panel{background:var(--paper);border:1px solid var(--line);border-radius:18px;padding:24px 20px;text-align:center}
-.panel h2{font-family:var(--f-display);font-weight:800;font-size:26px;margin:0 0 8px}
+.panel h2{font-family:var(--f-display);font-weight:800;font-size:24px;margin:0 0 8px}
 .panel p{margin:0 0 14px;color:var(--muted)}
-.panel .eg{font-family:var(--f-en);font-size:20px;color:var(--fg);margin:16px 0}
-.panel .eg u{color:var(--red);text-decoration:line-through}
+.modes{display:grid;grid-template-columns:1fr 1fr;gap:3px;background:var(--sunken);border-radius:14px;padding:3px;margin:18px 0 14px}
+.modes button{padding:10px 6px;border-radius:11px;color:var(--muted);line-height:1.3}
+.modes button b{display:block;font-family:var(--f-display);font-weight:800;font-size:16px}
+.modes button small{font-size:11.5px}
+.modes button[aria-pressed="true"]{background:var(--paper);color:var(--fg);box-shadow:0 1px 3px rgba(0,0,0,.14)}
 .btn{display:inline-block;padding:14px 34px;border-radius:999px;background:var(--red);color:var(--ink);font-family:var(--f-display);font-weight:800;font-size:18px}
 .btn:active{transform:scale(.97)}
 .rules{list-style:none;padding:0;margin:0 0 20px;font-size:14px;color:var(--muted);line-height:1.9}
@@ -80,11 +91,11 @@ header a,header button{color:var(--muted);font-size:13px;text-decoration:none;wh
 .review h3{font-size:12px;letter-spacing:.12em;color:var(--muted);font-weight:500;margin:0 0 8px}
 .review li{list-style:none;padding:12px 0;border-top:1px solid var(--line)}
 .review ul{padding:0;margin:0}
-.review .en{font-family:var(--f-en);font-size:17px}
+.review .en{font-family:var(--f-en);font-size:16.5px;color:var(--fg);margin:0 0 4px}
 .review .en u{color:var(--red);text-decoration:line-through}
 .review .en em{color:var(--ok);font-style:normal;font-weight:600}
-.review .jp{font-size:13px;color:var(--muted)}
-@media (prefers-reduced-motion:reduce){.sheet.shake{animation:none}.words button{transition:none}}
+.review .jp{font-size:13px;color:var(--muted);margin:0}
+@media (prefers-reduced-motion:reduce){.sheet.shake{animation:none}.words button,.passage .seg{transition:none}}
 </style>
 </head>
 <body>
@@ -95,48 +106,115 @@ header a,header button{color:var(--muted);font-size:13px;text-decoration:none;wh
   </header>
 
   <section class="panel" id="title">
-    <h2>まちがいを1語、見つけて赤ペン</h2>
-    <p>英文のなかに、まちがっている語がひとつだけあります。</p>
-    <p class="eg">She <u>have</u> a dog named Pochi.</p>
-    <ul class="rules">
-      <li><b>60秒</b>でできるだけたくさん添削する</li>
-      <li>連続正解で<b>コンボ</b>、得点アップ</li>
-      <li>はずすと<b>−5秒</b>。解説を読んでいる間は時計が止まります</li>
-    </ul>
+    <h2>まちがいを見つけて赤ペン</h2>
+    <p id="lead"></p>
+    <div class="modes" id="modes">
+      <button data-m="hard"><b>難関</b><small>長文・文脈判断あり</small></button>
+      <button data-m="basic"><b>標準</b><small>1文・基本の文法</small></button>
+    </div>
+    <ul class="rules" id="rules"></ul>
     <button class="btn" id="startBtn">スタート</button>
     <p style="margin:16px 0 0;font-size:13px">ベスト <b id="bestTitle">0</b> 点</p>
   </section>
 
   <section id="game" hidden>
     <div class="hud">
-      <div id="hudTime"><span>のこり</span><b id="time">60.0</b></div>
+      <div id="hudTime"><span>のこり</span><b id="time">0</b></div>
       <div><span>スコア</span><b id="score">0</b></div>
       <div><span>コンボ</span><b id="combo">0</b></div>
     </div>
     <div class="bar"><i id="barFill"></i></div>
     <div class="sheet" id="sheet">
       <p class="qno" id="qno"></p>
-      <div class="words" id="words"></div>
+      <div id="q"></div>
       <div class="fix" id="fix" aria-live="polite"></div>
       <p class="next" id="nextHint" hidden>タップでつぎへ</p>
     </div>
   </section>
 
   <section class="panel" id="result" hidden>
-    <p style="margin:0">けっか</p>
+    <p style="margin:0" id="resMode"></p>
     <div class="bigscore" id="finalScore">0</div>
     <div class="rank" id="rank"></div>
     <div class="stats"><div><b id="stRight">0</b>正解</div><div><b id="stMiss">0</b>ミス</div><div><b id="stCombo">0</b>最大コンボ</div><div><b id="stBest">0</b>ベスト</div></div>
     <button class="btn" id="againBtn">もう一度</button>
+    <p style="margin:14px 0 0"><button id="backBtn" style="color:var(--muted);font-size:13px;text-decoration:underline;text-underline-offset:3px">モードをえらぶ</button></p>
     <div class="review" id="review" hidden><h3>見直し</h3><ul id="reviewList"></ul></div>
   </section>
 </div>
 
 <script>
 'use strict';
-// Each item: "sentence with the [wrong] word bracketed | correction ('' = just remove it) | why". Grouped by level.
+// ---------- 難関: passages ----------
+// Each passage is written correctly, with {right|wrong|why} slots (a slot may carry several wrong|why pairs).
+// A question is generated at play time: one slot is swapped for a wrong form, four others are underlined
+// as they are, and the player picks the underlined part that is wrong.
+const PASSAGES = [
+`Most people assume that sleep is a time when the brain simply {shuts|shut|主語 the brain は単数で、一般的な事実を述べる現在形。shuts} down. {In fact|Therefore|前の文の「思い込み」をくつがえす内容が続く。順接の Therefore では流れが通らない}, the sleeping brain is remarkably active, {sorting|sorted|脳が記憶を「整理する」側なので現在分詞} through the day's memories and deciding which ones are worth {keeping|to keep|be worth 〜ing}. People who are deprived of sleep for even a single night find {it|that|形式目的語は it。find it + 形容詞 + to do} harder to learn new information, which suggests that rest is not a luxury {but|and|not A but B「A ではなく B」} a biological necessity.`,
+
+`Of the roughly seven thousand languages spoken today, nearly half {are|is|主語は half (of the languages)。複数あつかい} expected to disappear by the end of this century. When a language dies, {so does|so is|前の一般動詞 dies を受けるので so does} a unique way of seeing the world. Linguists have {therefore|nevertheless|「失われるものが大きい、だから記録を急ぐ」という因果。逆接では通らない} rushed to record endangered languages, but recording alone cannot prevent them {from|of|prevent O from 〜ing} dying out. A language survives only if children grow up {speaking|spoken|子どもが「話す」側なので現在分詞} it at home, and no dictionary, {however|whatever|形容詞 detailed を修飾する譲歩は however} detailed, can replace that.`,
+
+`City planners used to regard trees as little more than decoration. Recent studies, {however|moreover|「飾りにすぎない」という昔の見方と対立する内容なので逆接}, show that a street lined with trees can be several degrees {cooler|cool|うしろに than があるので比較級} than one without them. The shade they provide {reduces|reduce|主語は The shade（単数）。they provide は修飾節} the need for air conditioning, which in turn lowers energy bills. {Had|Have|if を省略した仮定法過去完了の倒置は Had + S + 過去分詞} planners understood this fifty years ago, many cities {would be|will be|仮定法。現在の事実に反する帰結は would + 原形} far more comfortable places to live in today. As it is, planting enough trees now will take decades to make {up for|up with|make up for「〜を埋め合わせる」} lost time.`,
+
+`We tend to believe that taking photographs helps us remember. One experiment suggests {otherwise|likewise|続く文は「撮った人のほうが覚えていなかった」。「そうではない」の otherwise}. Visitors to a museum who photographed every object remembered {fewer|less|details は数えられる名詞なので fewer} details than those who {had simply looked|have simply looked|過去の実験の話。現在完了は使えない}. The researchers concluded that the camera had allowed the visitors to stop {paying|to pay|「注意を払うのをやめる」は stop 〜ing} attention. Interestingly, the effect disappeared when people were asked to zoom in on one part of an object, {which|that|コンマのあとの非制限用法に that は使えない} forced them to choose what was worth noticing. What matters, it seems, is not the device but {how|what|うしろが完全な文（we use it）なので how} we use it.`,
+
+`When offices closed, many managers feared that employees working from home {would become|will become|主節が過去形 feared なので時制の一致} less productive. The opposite turned out to be true: output rose, and {so did|neither did|output rose という肯定を受けて「〜もまた増えた」は so did} the number of hours worked. This was not {entirely|hardly|not entirely「まったく〜というわけではない」} good news. Without a commute to separate work from the rest of the day, people found it difficult to stop, and many reported {feeling|to feel|report 〜ing「〜したと報告する」} exhausted. Companies are now trying to preserve the flexibility of remote work {while|during|うしろが分詞 protecting なので接続詞 while} protecting employees from its hidden costs, a balance that is easier to describe than {to achieve|achieving|比較の相手は to describe。形をそろえる}.`,
+
+`A honeybee that finds a rich source of food returns to the hive and performs a dance {whose|which|うしろに名詞 angle が続く。「そのダンスの角度」なので所有格} angle tells the others which direction to fly in. The longer the dance lasts, the {farther|far|the + 比較級, the + 比較級} away the food is. What is remarkable is not only that bees can communicate {but|and|not only A but (also) B} that they do so about something that is not present. For a long time, this ability {was thought|thought|能力は「考えられていた」側。受け身} to belong to humans alone. Few scientists would now defend that view, {though|because|「その見方を支持する人は少ないが、未解明の点は残る」という譲歩} how much a bee actually understands {remains|remain|主語は how 節。単数あつかい} an open question.`,
+
+`Students who read a text on paper generally understand it better than those who read {the same|same|same には the が必要} text on a screen. The difference is small for stories but {considerable|considerate|「かなりの」は considerable。considerate は「思いやりのある」} for texts that explain complicated ideas. One explanation is that screens encourage us to skim, a habit {formed|forming|習慣は「形成される」側なので過去分詞} by years of scrolling through messages. {If so|If not|直前の説明が正しいとすれば、という流れ。「もしそうなら」}, the problem lies not in the technology itself but in how we have learned to use it, and it should be possible to {teach|learn|「生徒に〜させる」。teach O to do。learn は人を目的語にとらない} students to read slowly on any surface. Until that happens, {printing|print|主語になるので動名詞} out an important document may still be worth the paper.`,
+
+`Economists have long been puzzled by gifts. If I give you a sweater that cost fifty dollars but that you value {at|for|value A at 金額「A を〜と評価する」} only thirty, twenty dollars of value has simply been {lost|losing|価値は「失われる」側。受け身}. From this point of view, cash would always be preferable {to|than|preferable to 〜。than は使わない} a present. Yet almost {no one|anyone|Yet で始まり、次に「そうする人は失礼だと思われる」と続く。「ほとんど誰も〜しない」} gives cash to a close friend, and those who do are often thought {rude|rudely|be thought + 形容詞（補語）}. The puzzle disappears once we accept that a gift is not mainly a transfer of goods. It is a message, and the effort {spent|spending|努力は「費やされる」側なので過去分詞} choosing it is part of what is being said.`,
+
+`The discovery of antibiotics is often described as an accident, but accidents favour those who are prepared. When Alexander Fleming noticed that mould had killed the bacteria in one of his dishes, he might easily {have thrown|throw|過去のことについての推量。might have + 過去分詞} the dish away. {Instead|Otherwise|「捨てることもできた。そうせずに理由を問うた」。otherwise は「さもなければ」}, he asked why. Even so, more than a decade passed before others turned his observation into a medicine that could be {produced|producing|薬は「生産される」側} in large quantities. Today the drugs are so widely used that many bacteria have become resistant {to|against|resistant to 〜} them, and doctors warn that unless new ones {are|will be|条件を表す副詞節では未来のことも現在形} developed, infections that are now {trivial|fatal|「いまはささいな感染症が、再び命取りになりうる」という対比} could once again prove deadly.`,
+
+`Every map is a simplification, and every simplification {involves|involve|every + 単数名詞は単数あつかい} a choice about what to leave out. A subway map, for instance, ignores real distances so that passengers can see at a glance how the lines connect. Nobody complains that it is inaccurate, {because|although|「目的どおりに働いているから文句が出ない」という理由} it does exactly what it is meant to do. Problems arise only when we forget that a map {was drawn|drew|地図は「描かれる」側} for a purpose and treat it as a neutral picture of reality. The familiar world map, on {which|that|前置詞 + 関係代名詞に that は使えない} Europe appears {far|very|比較級を強めるのは far や much。very は不可} larger than it is, has shaped the way generations of students imagine the planet. A map does not merely describe the world; it tells us what {is worth|worths|worth は形容詞。be worth 〜ing} noticing.`,
+
+`Boredom has a bad reputation, yet it may be more useful than we think. In one study, volunteers who had spent fifteen minutes {copying|to copy|spend 時間 〜ing} numbers from a phone book were then asked to think of uses for a plastic cup. They produced far more ideas than volunteers who {had not|were not|had spent を受けるので had not} . The researchers argue that a bored mind, {having|had|分詞構文。a bored mind が「持つ」ので現在分詞} nothing to occupy it, begins to wander, and that wandering is {where|which|うしろが完全な文。「〜が起こるところ」は where} new connections are made. If they are right, the smartphone may be costing us something. By filling every empty moment, it {prevents|protects|文章の主張は「退屈が役に立つ」。スマホはそれを「妨げる」} us from ever being bored, and thus from the kind of thinking that only {boredom|excitement|この文章で発想を生むとされているのは「退屈」} allows.`,
+
+`A good translator is expected to be invisible. A translation is usually praised when it reads {as if|even if|「まるで読者の母語で書かれたかのように」。even if は「たとえ〜でも」} it had {been written|been writing|翻訳は「書かれる」側} in the reader's own language. This standard is {harder|hardly|than があるので比較級。hardly は「ほとんど〜ない」} to meet than it sounds. Languages divide the world differently, and there is rarely a word in one language that means exactly the same {as|with|the same as 〜} a word in another. The translator is {therefore|otherwise|「ぴったりの語がない、だから選択を迫られる」という因果} forced to choose, again and again, between what the author said and what the author meant. No choice is perfect, and the best translators are those who know exactly what they {are giving up|are given up|翻訳者が「あきらめる」側。能動}.`,
+
+`A pill containing no medicine at all can relieve pain, provided the patient believes it is real. This placebo effect has been known for decades, but what surprised researchers was the discovery that it sometimes works even when patients {are told|tell|患者は「知らされる」側。受け身} the truth. In one trial, people with back pain were given pills clearly {labelled|labelling|錠剤は「表示される」側。過去分詞} as placebos; they still reported less pain than those given {nothing|anything|比較の相手は「何も与えられなかった人」}. Why this should happen is not well understood. One possibility is that the ritual of treatment, {rather than|other than|「薬についての信念ではなく、治療という儀式が」。rather than} any belief about the pill, triggers the body's own responses. {Whatever|However|名詞 the explanation が続く。「説明が何であれ」は whatever} the explanation, the finding raises an awkward question: if honesty does not destroy the effect, there {is|are|主語は little reason（単数）} little reason for doctors to deceive.`,
+
+`A cotton T-shirt can now be bought for less than the price of a sandwich, and this is not {because|why|次の文の It is because 〜 と対になる。not because A / it is because B} cotton has become cheap to grow. It is because the costs of producing the shirt are paid by someone other than the buyer. Growing the cotton for a single shirt requires about as {much|many|water は数えられない名詞} water as one person drinks in two and a half years, and the workers who sew it are often paid too {little|few|金額・量には little} to live on. Consumers rarely see any of this. {Were|If|if を省略した倒置。Were + S + to do} the true cost to appear on the price tag, few of us would buy clothes we intend to wear only {a few|few|「数回だけ」は only a few times} times. Until it does, cheap clothing will remain cheap only for those who {buy|make|文章の主張は「買う側だけが安く済んでいる」}  it.`,
+
+`It is widely believed that great musicians are born, not made. The evidence points the other way. When psychologists compared violin students at a famous academy, the best players turned out to have practised roughly twice as {long as|longer than|倍数表現は twice as 〜 as} the average ones by the age of twenty. Talent alone, {in other words|on the other hand|前の文の言いかえ。対比ではない}, did not explain the difference. This does not mean that anyone {who|whoever|先行詞 anyone があるので who} practises for ten thousand hours will become a master. What the students were doing mattered as much as how long they did it: they worked on the passages they found most difficult {instead of|in spite of|「知っている曲を弾く代わりに、苦手な箇所を練習した」} playing what they already knew. Such practice is rarely enjoyable, {which|what|前の内容を受ける非制限用法は which} may be why so few people {keep|keeps|主語は so few people（複数）} it up.`,
+
+`Climate change is often imagined as a slow, steady process, like a bath gradually filling. Scientists worry that it may behave {less|least|less like A than like B。than があるので比較級} like a bath than like a light switch. Certain systems, {such as|so as|例をあげるのは such as} the great ice sheets, appear stable for a long time and then change suddenly once a threshold {is crossed|will be crossed|時・条件を表す副詞節では未来のことも現在形}. The difficulty is that nobody knows exactly where these thresholds {lie|lay|「ある」は自動詞 lie。lay は他動詞「置く」}. This uncertainty is sometimes used as an argument for waiting until we know more. It ought to be an argument for the {opposite|same|「待つ理由に使われるが、本来は逆（急ぐ）の理由であるべきだ」}: when you are walking in the dark near the edge of a cliff, {not knowing|not known|動名詞句が主語。「知らないこと」} where the edge is hardly makes it sensible to walk faster.`,
+
+`Parents are usually upset when they first catch their child {telling|to tell|catch O 〜ing「O が〜しているところを見つける」} a lie. Psychologists see the matter {differently|different|動詞 see を修飾するので副詞}. To lie successfully, a child must understand that other people do not know everything {that|what|先行詞 everything があるので that} he or she knows, and must keep the false story consistent while hiding the true one. These are demanding skills, and children who acquire them early tend to do {well|good|動詞を修飾する副詞は well} on other tests of thinking. {None of this|All of this|次の文が It does suggest, however と続く。「以上のどれも、正直さが大事でないという意味ではない」} means that honesty is unimportant. It does suggest, however, that the first lie is a sign of a mind developing normally, and that punishment may teach a child only to lie {better|worse|罰しても「うそがうまくなるだけ」という皮肉}.`,
+
+`Complaints about having too much to read are far older than the internet. Within a century of the invention of printing, scholars were already lamenting that more books existed than anyone could read in a lifetime, and that most of {them|which|接続詞 and that でつないでいるので代名詞 them} were worthless. Their solution was not to read faster but to invent tools for not reading: the index, the summary and the review all date {from|since|date from 〜「〜にさかのぼる」} this period. Each allowed a reader to judge a book without {having|have|前置詞 without のうしろは動名詞} to finish it. Seen in this light, the search engine is {less|more|文章の流れは「新しい問題というより、古い問題への最新の答え」。less A than B} a new problem than the latest answer to an old one. What has changed is the scale, and {whether|if|主語になる名詞節に if は使えない} our old habits of selection can cope with it {is|are|主語は whether 節。単数あつかい} far from clear.`,
+
+`Does money make people happy? The answer depends on {how|what|うしろが完全な文 it is spent。方法を表す how} it is spent. In a well-known experiment, students were given a small sum in the morning and told to spend it by evening, either on themselves {or|and|either A or B} on someone else. Those who had bought a gift or donated to charity reported being happier than those who had treated {themselves|them|主語 those who と同じ人を指すので再帰代名詞}. The amount made no difference: five dollars worked as well as twenty. What is striking is that people {consistently|rarely|次の文で「大半の人が自分に使うほうがうれしいと答える」。つまり一貫して逆を予想する} predict the opposite. Asked in advance, most say that spending on themselves would please them more, {which|that|コンマのあとの非制限用法は which} may explain why so much money is spent in ways that bring so {little|few|joy は数えられない名詞。量には little} joy.`,
+
+`For more than a century, dinosaurs were pictured as giant lizards with grey, scaly skin. That image began to collapse in the 1990s, when fossils {were found|found|化石は「発見される」側。受け身にしないと節の動詞がなくなる} in China showing clear traces of feathers. It is now thought that many dinosaurs, including some close relatives of Tyrannosaurus, {were|was|主語は many dinosaurs（複数）。including 〜 は挿入} at least partly covered in them. These feathers cannot have been for flight, {since|unless|「重すぎて飛べなかったのだから」という理由} the animals were far too heavy to leave the ground; they probably served to keep the body warm or to attract mates. Flight came later, and birds are {what|that|先行詞を含む関係代名詞 what「〜するもの」} remains of that experiment. The pigeon on your windowsill is, quite {literally|literary|「文字どおり」は副詞 literally。literary は「文学の」}, a living dinosaur, {however|whatever|形容詞 unimpressive を修飾する譲歩は however} unimpressive it may look.`,
+
+`Nobody enjoys waiting, but how long a wait feels has surprisingly little to do with how long it {actually lasts|is actually lasted|last は自動詞。受け身にしない}. Airport managers in one city once received constant complaints about delays at the baggage hall. They hired more staff and cut the average wait to eight minutes, {yet|so|「待ち時間を減らしたのに苦情は続いた」。逆接} the complaints continued. Then someone noticed that passengers spent one minute walking to the hall and seven standing still. The managers moved the arrival gates {farther|closer|歩く時間が6分のびた、とある。ゲートは「遠く」へ移された} away, so that the walk took six minutes longer and the bags were waiting when passengers arrived. Complaints dropped to almost {nothing|anything|「ほとんどゼロに」は almost nothing}. The total time had not changed at all. {Occupied|Occupying|時間は「埋められる」側なので過去分詞} time, it seems, feels shorter than empty time, a fact {that|what|先行詞 a fact があるので that} every designer of lifts with mirrors already knows.`,
+
+`People who complain that a word is being used wrongly usually mean that it is being used {differently|different|used を修飾するので副詞} from the way they {were taught|taught|「教わった」。受け身}. Yet meanings have never stood still. 'Nice' once meant foolish, and 'silly' once meant blessed; had the complainers of the past {succeeded|been succeeded|succeed は自動詞。受け身にしない} in freezing the language, none of us could read a modern newspaper. Dictionaries do not decide what words mean. They record how words are actually used, and when enough speakers adopt a new sense, the dictionary follows. This does not mean that {anything|nothing|「何でもあり、というわけではない」。nothing では意味が逆} goes. A writer who ignores the expectations of readers will simply fail to be understood. But the authority lies with the community of speakers as a whole, not with {whoever|whomever|is の主語になるので主格 whoever} is most upset by change, and that is {exactly|hardly|前の内容をそのまま受けて「まさにそれが、言語が生きているということだ」} what it means for a language to be alive.`,
+
+`Judges are supposed to decide each case on its merits. A study of more than a thousand rulings found something {disturbing|disturbed|something が人を「不安にさせる」側なので現在分詞}. Prisoners who appeared before the judges early in the morning were granted parole about two-thirds of the time, {whereas|unless|朝と昼食前との対比。whereas「一方」} those who appeared just before lunch almost never were. After the meal, the rate jumped back up. The judges were not being deliberately unfair. Making one decision after another is tiring, and a tired mind falls back on the {safest|riskiest|疲れると「無難な」選択、つまり仮釈放を認めないほうに戻る} option, which in this case meant saying no. The lesson reaches well beyond the courtroom. Anyone {whose|who|うしろに名詞 job が続くので所有格} job involves a long series of choices would be wise to schedule the most important ones {early|lately|「早い時間に」。lately は「最近」}, and to be suspicious of any decision {made|making|決定は「下される」側} on an empty stomach.`,
+
+`Sociologists use the term 'third place' for somewhere that is {neither|either|nor と組むのは neither} home nor work: the café, the barber's shop, the public library. Such places matter {not because|because not|not because A but because B の語順} anything important happens there but because nothing has to. People drop in without an appointment, talk to {whoever|whomever|happens の主語になるので主格 whoever} happens to be around, and leave when they like. Over the past few decades many third places have closed, {driven|driving|店は「追い出される」側。過去分詞} out by rising rents and by the convenience of doing everything online. The loss is easy to overlook, since no single closure seems to matter much. But a neighbourhood {in which|which|うしろが完全な文なので前置詞が必要} people have nowhere to meet by chance is one where they gradually stop {meeting|to meet|「会うのをやめる」は stop 〜ing} at all.`,
+
+`Science is often praised for being right. It would be more accurate to praise it for having a reliable way of discovering that it is {wrong|right|続く文はすべて「誤りを見つけて直す」話}. No single experiment proves anything; a result becomes trustworthy only after other researchers, {working|worked|研究者が「作業する」側。現在分詞} independently, have obtained it again. In recent years, attempts to repeat famous findings in psychology and medicine have failed about as often as they {have succeeded|have been succeeded|succeed は自動詞。受け身にしない}. Some commentators concluded that science was in crisis. A better conclusion is that the system is doing {what|which|先行詞を含む関係代名詞 what「〜すること」} it is supposed to do. A field that never found errors in its own past work would not be more reliable; it would {merely|rarely|「単に点検が甘いだけ」。rarely では意味が通らない} be less carefully examined. The real danger lies not in results that fail to be repeated but in {those|that|複数の results を受けるので those} nobody ever tries to repeat.`,
+
+`Tourism is often described as an industry without smoke, {as though|even though|「まるで害を出さないかのように」。even though は「〜だけれども」} it produced nothing harmful. The residents of popular cities know better. When visitors outnumber locals, apartments are turned into hotels, rents rise, and shops that once sold bread begin {selling|sold|begin 〜ing。店が「売る」側} souvenirs. The very qualities that attracted tourists {are|is|主語は The very qualities（複数）} gradually destroyed by their arrival. Some cities have responded by limiting the number of visitors or charging an entrance fee. Such measures are unpopular with businesses, most of {which|them|二つの節をつなぐ語が必要。関係代名詞 which} depend on the crowds. Still, a city that does nothing risks {becoming|to become|risk 〜ing} a museum of itself, a place that people visit {precisely|scarcely|「まさに、もう誰も住んでいないからこそ訪れる」という皮肉} because nobody lives there any more.`,
+
+`Why do young animals play? Play uses energy, attracts predators and sometimes causes injury, so it would not have survived millions of years of evolution {unless|if|「何か利点がなければ生き残らなかったはず」} it offered some advantage. The obvious guess is that play is practice for adult life. Kittens that chase a ball, the argument goes, {are learning|learning|文の動詞が必要。the argument goes は挿入} to hunt. The trouble is that experiments do not support {it|them|指しているのは the obvious guess（単数）}. Kittens prevented from playing grow up to hunt just as {well|good|動詞 hunt を修飾する副詞} as those that play freely. A more recent idea is that play prepares animals not for specific tasks but for the unexpected. By deliberately putting themselves off balance, young animals learn to recover from surprises. If this is right, play is valuable precisely {because|although|「特定の練習ではないからこそ価値がある」} it is not practice for anything in particular, and a child with no time to play is being prepared for a world that never {changes|stays the same|遊びは「予想外」への備え。遊ばない子は「変化しない世界」向けに育てられていることになる}.`,
+
+`Students who take notes on a laptop write down far more than those who use a pen. One might expect them to learn more {as well|either|肯定文の「〜もまた」は as well。either は否定文で使う}. They do not. In tests given a week later, the pen users understood the material better, even though their notes were much {shorter|longer|第1文に「パソコンのほうがずっと多く書く」とある。手書きのノートは短い}. The reason seems to be that typing is fast enough to record a lecture word for word, {which|that|コンマのあとの非制限用法は which} requires no thought, while writing by hand is too slow {to|that|too 〜 to do} allow it. Forced to choose what to write down, the pen users had to decide what mattered, and {deciding|decided|主語になるので動名詞} is a form of learning. In a later experiment the laptop users were warned about this and told not to copy the lecture word for word. They did so {anyway|instead|「警告されたのに、それでもやった」}.`,
+
+`It used to be said that children raised with two languages would be confused by them and master {neither|either|「どちらも身につかない」。肯定形の master と組むので neither}. Research has not been kind to this idea. Bilingual children do sometimes mix their languages in a single sentence, but they do so according {to|with|according to 〜} rules, and only when speaking to someone who knows both. Far from being confused, they are constantly choosing which language to use and holding the other one back. This mental exercise appears to have benefits that last a lifetime: among elderly people who develop dementia, those who have spoken two languages all their lives tend to show symptoms several years {later|latter|「より遅く」は later。latter は「後者の」} than those who speak only one. The brain, like a muscle, seems to stay healthy longer the more it {is used|uses|脳は「使われる」側} . Parents who avoid a second language for fear of {harming|harm|前置詞 of のうしろは動名詞} their children may be denying {them|themselves|与えられずにいるのは子ども。親自身ではない} a gift.`,
+
+`For most of human history, the night sky was the one sight shared by everyone on earth. Today a child born in a large city may never see the Milky Way at all. Artificial light, {scattered|scattering|光は「散乱される」側。過去分詞} by dust and moisture in the air, forms a glowing dome that hides all but the brightest stars. The loss is not merely romantic. Birds that migrate at night are drawn off course by lit buildings, and newly hatched sea turtles, {which|who|先行詞は動物。who は人に使う} find the ocean by heading for the brightest horizon, crawl inland towards hotels instead. Unlike most forms of pollution, {however|therefore|被害の話から「これはすぐに解決できる」という明るい話に転じる。逆接}, this one could be ended almost at once. Light disappears the moment it {is switched|will be switched|時を表す副詞節では未来のことも現在形} off. All that is required is to point lamps downwards and to ask, before installing a new one, {whether|that|ask のあとは「〜かどうか」の whether} it is {needed|needing|ランプは「必要とされる」側}.`,
+];
+
+// ---------- 標準: one sentence, one wrong word ----------
+// "sentence with the [wrong] word bracketed | correction ('' = just remove it) | why". Grouped by level.
 const BANK = [
-[ // level 1
+[
 'She [have] a dog named Pochi.|has|主語が三人称単数なので has',
 'I [goed] to the library yesterday.|went|go の過去形は went',
 'There [is] many students in the room.|are|主語は many students（複数）',
@@ -161,7 +239,7 @@ const BANK = [
 'We arrived [to] the station at noon.|at|arrive at 〜「〜に着く」',
 'I\'m [exciting] about the trip.|excited|人が「わくわくしている」は excited',
 ],
-[ // level 2
+[
 'If I [am] a bird, I could fly to you.|were|仮定法過去。if 節は過去形（be は were）',
 'The number of tourists [are] increasing.|is|主語は The number（単数）',
 'I am used to [get] up early.|getting|be used to 〜ing「〜に慣れている」',
@@ -193,7 +271,7 @@ const BANK = [
 'She resembles [to] her mother.||resemble は他動詞。前置詞は不要',
 'He entered [into] the room quietly.||「部屋に入る」の enter は他動詞',
 ],
-[ // level 3
+[
 'Had I known the truth, I would [tell] you.|have told|仮定法過去完了。would have + 過去分詞',
 'It was not until yesterday [when] I noticed it.|that|It is not until 〜 that …（強調構文）',
 'Scarcely had he arrived [than] it began to rain.|when|Scarcely 〜 when …「〜するとすぐ…」',
@@ -219,11 +297,20 @@ const BANK = [
 'He was [laughed] by everyone in the class.|laughed at|laugh at を受け身にしても at は残る',
 ]];
 
+const MODES = {
+  hard:  {name: '難関', time: 180, penalty: 10, base: 300, step: 50, okWait: 3, ngWait: 12, ranks: [[7, '添削マスター'], [5, 'ベテラン添削者'], [3, 'たよれる添削者'], [1, '見習い添削者']],
+          lead: '短い文章に下線が5か所。まちがっているのは1か所だけです。', rules: ['<b>180秒</b>でできるだけたくさん添削する', '文法だけでなく、<b>前後の流れに合わない語</b>も誤りです', 'はずすと<b>−10秒</b>。解説を読んでいる間は時計が止まります']},
+  basic: {name: '標準', time: 60, penalty: 5, base: 100, step: 20, okWait: 1.5, ngWait: 4, ranks: [[18, '添削マスター'], [13, 'ベテラン添削者'], [8, 'たよれる添削者'], [4, '見習い添削者']],
+          lead: '1文のなかに、まちがっている語がひとつだけあります。', rules: ['<b>60秒</b>でできるだけたくさん添削する', '連続正解で<b>コンボ</b>、得点アップ', 'はずすと<b>−5秒</b>。解説を読んでいる間は時計が止まります']},
+};
+
 const $ = id => document.getElementById(id);
-const KEY = 'akapen-best';
-const GAME_TIME = 60, PENALTY = 5;
-let best = 0; try{ best = +localStorage.getItem(KEY) || 0; }catch{}
-let muted = false; try{ muted = localStorage.getItem('akapen-muted') === '1'; }catch{}
+const esc = s => s.replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
+const store = {get(k, d){ try{ const v = localStorage.getItem(k); return v === null ? d : v; }catch{ return d; } }, set(k, v){ try{ localStorage.setItem(k, v); }catch{} }};
+let mode = store.get('akapen-mode', 'hard') === 'basic' ? 'basic' : 'hard';
+const bestKey = m => m === 'basic' ? 'akapen-best' : 'akapen-best-hard';
+const best = m => +store.get(bestKey(m), 0) || 0;
+let muted = store.get('akapen-muted', '0') === '1';
 
 // ---- sound ----
 let AC = null;
@@ -236,72 +323,134 @@ function tone(f, d = .1, type = 'triangle', v = .12, delay = 0){
   o.connect(g).connect(AC.destination); o.start(t); o.stop(t + d + .03);
 }
 function paintMute(){ $('muteBtn').textContent = muted ? '音 OFF' : '音 ON'; $('muteBtn').setAttribute('aria-pressed', String(muted)); }
-$('muteBtn').onclick = () => { muted = !muted; try{ localStorage.setItem('akapen-muted', muted ? '1' : '0'); }catch{} paintMute(); };
+$('muteBtn').onclick = () => { muted = !muted; store.set('akapen-muted', muted ? '1' : '0'); paintMute(); };
 paintMute();
 
-// ---- game state ----
-let pools, timeLeft, score, combo, maxCombo, right, misses, qCount, cur, phase = 'idle', lastNow = 0, revealT = 0, lastBeep = 0;
+// ---- question builders ----
+const shuffle = a => { for(let i = a.length - 1; i > 0; i--){ const j = Math.random() * (i + 1) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const tidy = s => s.replace(/\s+([.,;:])/g, '$1').replace(/\s{2,}/g, ' ');
 
-function parse(s){
-  const [text, fix, note] = s.split('|');
-  const words = text.split(' ');
-  const idx = words.findIndex(w => w.includes('['));
-  const wrong = words[idx].replace(/^[^\[]*\[|\].*$/g, '');
-  return {words: words.map(w => w.replace(/[\[\]]/g, '')), idx, wrong, fix, note};
+// Split a passage into plain text and slots: {t:'text'} | {right, wrongs:[{w, note}]}
+function parsePassage(src){
+  const parts = []; let last = 0;
+  for(const m of src.matchAll(/\{([^{}]+)\}/g)){
+    if(m.index > last) parts.push({t: src.slice(last, m.index)});
+    const f = m[1].split('|'), wrongs = [];
+    for(let i = 1; i + 1 < f.length; i += 2) wrongs.push({w: f[i], note: f[i + 1]});
+    parts.push({right: f[0], wrongs});
+    last = m.index + m[0].length;
+  }
+  if(last < src.length) parts.push({t: src.slice(last)});
+  return parts;
 }
-function shuffle(a){ for(let i = a.length - 1; i > 0; i--){ const j = Math.random() * (i + 1) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; }
+// Pick one slot to break and four more to underline; everything else is printed as plain, correct text.
+function makeHard(src){
+  const parts = parsePassage(src), slots = parts.filter(p => p.right);
+  const bad = slots[Math.random() * slots.length | 0], v = bad.wrongs[Math.random() * bad.wrongs.length | 0];
+  const shown = new Set([bad, ...shuffle(slots.filter(s => s !== bad)).slice(0, 4)]);
+  let html = '', n = 0, idx = -1, before = '', after = '', seen = false;
+  for(const p of parts){
+    if(p.t !== undefined){ html += esc(p.t); if(seen) after += p.t; else before += p.t; continue; }
+    const text = p === bad ? v.w : p.right;
+    if(shown.has(p)){
+      if(p === bad) idx = n;
+      html += `<span class="seg" role="button" tabindex="0" data-i="${n}" data-l="${'abcde'[n]}">${esc(text)}</span>`; n++;
+    }else html += esc(text);
+    if(p === bad) seen = true; else if(seen) after += text; else before += text;
+  }
+  // review line: the sentence around the error
+  const b = tidy(before).split(/(?<=[.!?:;])\s+/).pop(), a = tidy(' ' + after).split(/(?<=[.!?:;])\s/)[0];
+  return {kind: 'hard', html: tidy(html), idx, wrong: v.w, fix: bad.right, note: v.note,
+          review: `${esc(b)}<u>${esc(v.w)}</u> <em>${esc(bad.right)}</em>${esc(a)}`};
+}
+function makeBasic(s){
+  const [text, fix, note] = s.split('|'), raw = text.split(' ');
+  const idx = raw.findIndex(w => w.includes('[')), words = raw.map(w => w.replace(/[\[\]]/g, ''));
+  const wrong = raw[idx].replace(/^[^\[]*\[|\].*$/g, '');
+  return {kind: 'basic', words, idx, wrong, fix, note,
+          review: words.map((w, i) => i === idx ? `<u>${esc(w)}</u>${fix ? ` <em>${esc(fix)}</em>` : ''}` : esc(w)).join(' ')};
+}
+
+// ---- game state ----
+let M, pools, timeLeft, score, combo, maxCombo, right, misses, qCount, cur, phase = 'idle', lastNow = 0, revealT = 0, lastBeep = 0;
+
+function paintTitle(){
+  const m = MODES[mode];
+  document.querySelectorAll('#modes button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.m === mode)));
+  $('lead').textContent = m.lead;
+  $('rules').innerHTML = m.rules.map(r => `<li>${r}</li>`).join('');
+  $('bestTitle').textContent = best(mode);
+}
+$('modes').addEventListener('click', e => { const b = e.target.closest('button'); if(!b) return; mode = b.dataset.m; store.set('akapen-mode', mode); paintTitle(); });
 
 function start(){
   unlock();
-  pools = BANK.map(l => shuffle(l.map(parse)));
-  timeLeft = GAME_TIME; score = 0; combo = 0; maxCombo = 0; right = 0; misses = []; qCount = 0; lastBeep = 11;
+  M = MODES[mode];
+  pools = mode === 'hard' ? [shuffle([...PASSAGES])] : BANK.map(l => shuffle([...l]));
+  timeLeft = M.time; score = 0; combo = 0; maxCombo = 0; right = 0; misses = []; qCount = 0; lastBeep = 11;
   $('title').hidden = true; $('result').hidden = true; $('game').hidden = false;
+  $('sheet').classList.toggle('plain', mode === 'hard');
   nextQ(); lastNow = performance.now(); paintHud();
 }
-// Difficulty ramps with the question number; falls back to any pool that still has items.
 function nextQ(){
-  const want = qCount < 4 ? 0 : qCount < 10 ? 1 : 2;
-  const pool = [pools[want], pools[1], pools[2], pools[0]].find(p => p.length);
-  if(!pool){ finish(); return; }
-  cur = pool.pop(); qCount++; phase = 'play';
-  $('qno').textContent = `第 ${qCount} 問 ・ ${['やさしい', 'ふつう', 'むずかしい'][BANK.findIndex((_, i) => pools[i] === pool)]}`;
-  const box = $('words'); box.className = 'words'; box.innerHTML = '';
-  cur.words.forEach((w, i) => { const b = document.createElement('button'); b.textContent = w; b.onclick = e => { e.stopPropagation(); pick(i, b); }; box.appendChild(b); });
-  $('fix').innerHTML = ''; $('nextHint').hidden = true;
+  const box = $('q');
+  if(mode === 'hard'){
+    if(!pools[0].length) pools[0] = shuffle([...PASSAGES]);   // each passage hides several different errors, so a second lap is new
+    cur = makeHard(pools[0].pop()); qCount++;
+    $('qno').textContent = `第 ${qCount} 問`;
+    box.className = 'passage'; box.innerHTML = cur.html;
+  }else{
+    // difficulty ramps with the question number; falls back to any level that still has items
+    const want = qCount < 4 ? 0 : qCount < 10 ? 1 : 2;
+    const pool = [pools[want], pools[1], pools[2], pools[0]].find(p => p.length);
+    if(!pool){ finish(); return; }
+    cur = makeBasic(pool.pop()); qCount++;
+    $('qno').textContent = `第 ${qCount} 問 ・ ${['やさしい', 'ふつう', 'むずかしい'][pools.indexOf(pool)]}`;
+    box.className = 'words';
+    box.innerHTML = cur.words.map((w, i) => `<button data-i="${i}">${esc(w)}</button>`).join('');
+  }
+  phase = 'play'; $('fix').innerHTML = ''; $('nextHint').hidden = true; scrollTo(0, 0);
 }
-function esc(s){ return s.replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c])); }
-function pick(i, btn){
+function pick(el){
   if(phase !== 'play') return;
-  const ok = i === cur.idx, box = $('words');
+  const i = +el.dataset.i, ok = i === cur.idx, box = $('q');
   box.classList.add('done');
   const fixHtml = `<p class="corr"><s>${esc(cur.wrong)}</s> → ${cur.fix ? esc(cur.fix) : '（とる）'}</p><p class="note">${esc(cur.note)}</p>`;
   if(ok){
     combo++; maxCombo = Math.max(maxCombo, combo); right++;
-    const gain = 100 + Math.min(combo - 1, 10) * 20; score += gain;
-    btn.classList.add('hit');
+    const gain = M.base + Math.min(combo - 1, 10) * M.step; score += gain;
+    el.classList.add('hit');
     $('fix').innerHTML = `<p class="mark good">せいかい +${gain}</p>` + fixHtml;
     tone(660, .08); tone(990, .14, 'triangle', .12, .07);
-    revealT = 1.5;
+    revealT = M.okWait;
   }else{
-    combo = 0; timeLeft = Math.max(0, timeLeft - PENALTY); misses.push(cur);
-    btn.classList.add('miss'); box.children[cur.idx].classList.add('ans');
-    $('fix').innerHTML = `<p class="mark bad">ざんねん −${PENALTY}秒</p>` + fixHtml;
+    combo = 0; timeLeft = Math.max(0, timeLeft - M.penalty); misses.push(cur);
+    el.classList.add('miss'); box.querySelector(`[data-i="${cur.idx}"]`).classList.add('ans');
+    $('fix').innerHTML = `<p class="mark bad">ざんねん −${M.penalty}秒</p>` + fixHtml;
     const sh = $('sheet'); sh.classList.remove('shake'); void sh.offsetWidth; sh.classList.add('shake');
     tone(160, .25, 'sawtooth', .1);
-    revealT = 4;
+    revealT = M.ngWait;
   }
   phase = 'reveal'; $('nextHint').hidden = false; paintHud();
+  $('fix').scrollIntoView({block: 'nearest', behavior: 'smooth'});
 }
 function advance(){ if(phase !== 'reveal') return; if(timeLeft <= 0) finish(); else nextQ(); }
-$('sheet').addEventListener('click', advance);
-addEventListener('keydown', e => { if((e.code === 'Space' || e.code === 'Enter') && phase === 'reveal'){ e.preventDefault(); advance(); } });
+$('sheet').addEventListener('click', e => {
+  const el = e.target.closest('[data-i]');
+  if(el && phase === 'play') pick(el); else advance();
+});
+addEventListener('keydown', e => {
+  if(e.code !== 'Space' && e.code !== 'Enter') return;
+  if(phase === 'reveal'){ e.preventDefault(); advance(); }
+  else if(phase === 'play' && e.target.classList && e.target.classList.contains('seg')){ e.preventDefault(); pick(e.target); }
+});
 
 function paintHud(){
   $('time').textContent = timeLeft.toFixed(1);
   $('score').textContent = score;
   $('combo').textContent = combo;
   $('hudTime').classList.toggle('low', timeLeft <= 10);
-  $('barFill').style.width = (timeLeft / GAME_TIME * 100) + '%';
+  $('barFill').style.width = (timeLeft / M.time * 100) + '%';
 }
 function tick(now){
   const dt = Math.min(.1, (now - lastNow) / 1000); lastNow = now;
@@ -318,20 +467,22 @@ function tick(now){
 function finish(){
   if(phase === 'idle') return;
   phase = 'idle';
-  const isBest = score > best;
-  if(isBest){ best = score; try{ localStorage.setItem(KEY, String(best)); }catch{} }
+  const isBest = score > best(mode);
+  if(isBest) store.set(bestKey(mode), String(score));
   $('game').hidden = true; $('result').hidden = false;
+  $('resMode').textContent = `けっか（${M.name}）`;
   $('finalScore').textContent = score;
-  const r = right >= 18 ? '添削マスター' : right >= 13 ? 'ベテラン添削者' : right >= 8 ? 'たよれる添削者' : right >= 4 ? '見習い添削者' : 'ウォーミングアップ';
+  const r = (M.ranks.find(([n]) => right >= n) || [0, 'ウォーミングアップ'])[1];
   $('rank').textContent = (isBest && score > 0 ? 'ベスト更新！ ' : '') + r;
-  $('stRight').textContent = right; $('stMiss').textContent = misses.length; $('stCombo').textContent = maxCombo; $('stBest').textContent = best;
+  $('stRight').textContent = right; $('stMiss').textContent = misses.length; $('stCombo').textContent = maxCombo; $('stBest').textContent = best(mode);
   $('review').hidden = !misses.length;
-  $('reviewList').innerHTML = misses.map(m => `<li><p class="en">${m.words.map((w, i) => i === m.idx ? `<u>${esc(w)}</u>${m.fix ? ` <em>${esc(m.fix)}</em>` : ''}` : esc(w)).join(' ')}</p><p class="jp">${esc(m.note)}</p></li>`).join('');
-  $('bestTitle').textContent = best;
+  $('reviewList').innerHTML = misses.map(m => `<li><p class="en">${m.review}</p><p class="jp">${esc(m.note)}</p></li>`).join('');
+  scrollTo(0, 0);
   [523, 659, 784, 1046].forEach((f, i) => tone(f, .2, 'triangle', .1, i * .12));
 }
 $('startBtn').onclick = start; $('againBtn').onclick = start;
-$('bestTitle').textContent = best;
+$('backBtn').onclick = () => { $('result').hidden = true; $('title').hidden = false; paintTitle(); };
+paintTitle();
 requestAnimationFrame(tick);
 </script>
 </body>
