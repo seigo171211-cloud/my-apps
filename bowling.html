@@ -35,7 +35,8 @@ body{background:#2a1d66;color:#fff;font-family:var(--body);font-weight:800;overf
 .chip svg{width:30px;height:33px;flex:none}
 .chip .tx{min-width:0;display:flex;flex-direction:column;flex:1}
 .chip .nm{font-size:10.5px;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:3px}
-.chip .you{font-size:8.5px;background:var(--r);color:#fff;border-radius:4px;padding:0 3px;line-height:1.4}
+.chip .you.c{background:var(--ink)}
+.chip .you{font-size:8.5px;flex:none;background:var(--r);color:#fff;border-radius:4px;padding:0 3px;line-height:1.4}
 .chip .sc{font-family:var(--disp);font-weight:400;font-size:18px;line-height:1.05}
 .chip .mk{font-size:9.5px;color:#6b6290;letter-spacing:.06em;white-space:nowrap;overflow:hidden;min-height:11px;line-height:1.15}
 .sub{display:flex;justify-content:space-between;align-items:flex-start;max-width:760px;width:100%;margin:0 auto}
@@ -68,11 +69,11 @@ body{background:#2a1d66;color:#fff;font-family:var(--body);font-weight:800;overf
 .mwrap{margin-top:5px;visibility:hidden}
 .mwrap.on{visibility:visible}
 .meter{position:relative;height:20px;border-radius:10px;border:3px solid var(--ink);overflow:hidden}
-.meter.pow{background:linear-gradient(90deg,#d7dcff 0 50%,#ffe27a 50% 78%,#4fdc8e 78% 90%,#ffa94d 90% 95%,#ff4f6d 95%)}
+.meter.pow{background:linear-gradient(90deg,#d7dcff 0 50%,#ffe27a 50% 82%,#4fdc8e 82% 87%,#ffa94d 87% 95%,#ff4f6d 95%)}
 .meter.spin{background:linear-gradient(90deg,#4f8bff,#cfe0ff 44%,#fff 50%,#ffd0dc 56%,#ff4f6d)}
 .meter.aim{background:repeating-linear-gradient(90deg,#efeaff 0 10%,#e1d9ff 10% 20%)}
 .needle{position:absolute;top:-3px;bottom:-3px;left:50%;width:7px;margin-left:-3.5px;background:var(--ink);border-radius:3px;box-shadow:0 0 0 2px #fff}
-.mlab{display:flex;justify-content:space-between;font-size:10.5px;color:#8a83ad;margin-top:2px;font-weight:500}
+.mlab{position:relative;display:flex;justify-content:space-between;font-size:10.5px;color:#8a83ad;margin-top:2px;font-weight:500}
 .mlab b{color:var(--gd);font-weight:800}
 
 /* ---- banner ---- */
@@ -97,6 +98,17 @@ body{background:#2a1d66;color:#fff;font-family:var(--body);font-weight:800;overf
 .pc b{display:block;font-size:13px;margin-top:2px}
 .pc small{display:block;font-size:9.5px;color:#8a83ad;font-weight:500;line-height:1.35;min-height:26px}
 .pc[aria-pressed="true"]{background:#fff;border-color:var(--c);box-shadow:0 4px 0 var(--cd);transform:translateY(-3px)}
+.prow{--c:#888;--cd:#555;display:flex;align-items:center;gap:6px;background:#f7f5ff;border-radius:14px;padding:6px 8px;margin-top:6px}
+.prow .pn{font-family:var(--disp);font-weight:400;font-size:13px;color:#fff;background:var(--c);border-radius:8px;padding:3px 6px;flex:none}
+.prow input{flex:1;min-width:0;font:inherit;font-size:16px;border:3px solid #ddd5fb;border-radius:10px;padding:4px 8px;color:var(--ink);background:#fff;-webkit-user-select:text;user-select:text}
+.prow input:focus{outline:none;border-color:var(--c)}
+.prow .cs{display:flex;gap:2px;flex:none}
+.prow .cs button{--c:#888;width:34px;height:37px;padding:1px;border:2px solid transparent;border-radius:10px;background:none;cursor:pointer;opacity:.4}
+.prow .cs button[aria-pressed="true"]{opacity:1;border-color:var(--c);background:#fff}
+.prow .cs button:focus-visible{outline:3px solid var(--b)}
+.prow .cs svg{width:100%;height:100%;display:block}
+.cpuinfo{font-size:11.5px;color:#8a83ad;font-weight:500;margin:8px 0 0;line-height:1.5}
+.segs{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
 .pc:focus-visible,.seg button:focus-visible,.btn:focus-visible{outline:3px solid var(--b);outline-offset:2px}
 .seg{display:inline-flex;background:#f0ecff;border-radius:999px;padding:4px;gap:4px}
 .seg button{font:inherit;font-size:13px;border:0;background:none;padding:6px 16px;border-radius:999px;cursor:pointer;color:#6b6290}
@@ -182,15 +194,19 @@ table.sc tr.cur td{background:#fffbe6}
 <div class="ov" id="titleOv">
   <div class="card">
     <h1 class="logo" id="logo"></h1>
-    <p class="lead">4人でワイワイ、ボウリング対決! 毎フレームのルーレットでレーンが変わる。<br>タイミング勝負だから、ストライクはそう簡単には出ないよ。</p>
-    <p class="lbl">キャラをえらぶ(ほかの3人はCPU)</p>
-    <div class="pick" id="pick"></div>
+    <p class="lead">1〜4人でワイワイ、ボウリング対決! 毎フレームのルーレットでレーンが変わる。<br>タイミング勝負だから、ストライクはそう簡単には出ないよ。</p>
+    <p class="lbl">あそぶ人数</p>
+    <div class="segs"><div class="seg" id="humans"><button type="button" data-n="1" aria-pressed="true">1人</button><button type="button" data-n="2" aria-pressed="false">2人</button><button type="button" data-n="3" aria-pressed="false">3人</button><button type="button" data-n="4" aria-pressed="false">4人</button></div>
+    <div class="seg" id="cpuSeg"><button type="button" data-c="1" aria-pressed="true">CPUと4人で</button><button type="button" data-c="0" aria-pressed="false">CPUなし</button></div></div>
+    <p class="lbl">なまえとキャラ</p>
+    <div id="prows"></div>
+    <p class="cpuinfo" id="cpuinfo"></p>
     <p class="lbl">フレーム数</p>
     <div class="seg" id="frames"><button type="button" data-n="5" aria-pressed="true">5フレーム</button><button type="button" data-n="10" aria-pressed="false">10フレーム</button></div>
     <div class="how">
       <div><i>1</i><b>位置</b>ドラッグ / ←→ で立ち位置。タップで決定</div>
       <div><i>2</i><b>方向</b>ゆれる矢印をタップで止める</div>
-      <div><i>3</i><b>パワー</b>緑の「ナイス」でとめる。赤は力みすぎ</div>
+      <div><i>3</i><b>パワー</b>細い緑の「ナイス」でとめる。赤は力みすぎ</div>
       <div><i>4</i><b>カーブ</b>オイルが切れた先で曲がる</div>
     </div>
     <div class="btns"><button class="btn" id="startBtn" type="button">あそぶ!</button></div>
@@ -417,7 +433,11 @@ function rollStop(){if(rollSrc){try{rollSrc.stop(AC.currentTime+0.2);}catch(e){}
 
 // ---------- game state ----------
 const G={phase:'title',players:[],N:5,round:0,cur:0,cond:baseCond(),ev:EVENTS[0],pins:[],view:[],sim:null,bx:0,aim:0,power:0,spin:0,pt:0,off:0,shot:null,ff:false,plan:null,wait:0,next:null,locked:{}};
-let chosen=0;
+const setup={n:1,cpu:true,slots:[0,1,2,3].map(i=>({name:'',ch:i}))};
+try{const sv=JSON.parse(localStorage.getItem('bowling.setup')||'null');if(sv&&Array.isArray(sv.slots)&&sv.slots.length===4){setup.n=clamp(sv.n|0,1,4);setup.cpu=sv.cpu!==false;const chs=sv.slots.map(x=>x.ch);if([0,1,2,3].every(c=>chs.includes(c)))setup.slots=sv.slots.map(x=>({name:String(x.name||'').slice(0,8),ch:x.ch}));}}catch(e){}
+function saveSetup(){try{localStorage.setItem('bowling.setup',JSON.stringify(setup));}catch(e){}}
+const esc=t=>String(t).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let HUMANS=1;
 const cur=()=>G.players[G.cur];
 
 // ---------- canvas / projection ----------
@@ -606,7 +626,7 @@ function cumScores(frames,N){
 const scoreOf=p=>{const c=cumScores(p.frames,G.N);return(c.length?c[c.length-1]:0)+p.bonus;};
 function renderChips(){
   chipsEl.innerHTML=G.players.map((p,i)=>{const fr=p.frames[G.round];const mk=frameMarks(fr,G.round===G.N-1).join(' ');
-    return`<div class="chip${i===G.cur&&G.phase!=='final'?' on':''}" style="--c:${p.ch.color};--cd:${p.ch.dark}">${avatar(p.ch)}<div class="tx"><span class="nm">${p.ch.name}${p.cpu?'':'<span class="you">あなた</span>'}</span><span class="sc">${scoreOf(p)}</span><span class="mk">${mk||'&nbsp;'}</span></div></div>`;}).join('');
+    return`<div class="chip${i===G.cur&&G.phase!=='final'?' on':''}" style="--c:${p.ch.color};--cd:${p.ch.dark}">${avatar(p.ch)}<div class="tx"><span class="nm">${esc(p.name)}${p.cpu?'<span class="you c">CPU</span>':HUMANS===1?'<span class="you">あなた</span>':''}</span><span class="sc">${scoreOf(p)}</span><span class="mk">${mk||'&nbsp;'}</span></div></div>`;}).join('');
 }
 function renderBadge(){
   const b=$('#badge');const ev=G.ev;let nm=ev.name;
@@ -617,7 +637,7 @@ function renderBadge(){
 function renderCard(){
   let h='<tr><th></th>';for(let f=0;f<G.N;f++)h+=`<th>${f+1}</th>`;h+='<th>ボーナス</th><th>合計</th></tr>';
   G.players.forEach((p,i)=>{const cum=cumScores(p.frames,G.N);
-    h+=`<tr class="${i===G.cur?'cur':''}"><td class="nm"><span style="background:${p.ch.color}"></span>${p.ch.name}${p.cpu?'':'(あなた)'}</td>`;
+    h+=`<tr class="${i===G.cur?'cur':''}"><td class="nm"><span style="background:${p.ch.color}"></span>${esc(p.name)}${p.cpu?'(CPU)':''}</td>`;
     for(let f=0;f<G.N;f++){h+=`<td><span class="m">${frameMarks(p.frames[f],f===G.N-1).join(' ')||''}</span><span class="c">${cum[f]!==undefined?cum[f]:''}</span></td>`;}
     h+=`<td>${p.bonus?'+'+p.bonus:''}</td><td class="tot">${scoreOf(p)}</td></tr>`;});
   $('#scTable').innerHTML=h;
@@ -629,7 +649,7 @@ const meter=$('#meter'),needle=$('#needle'),mlab=$('#mlab'),mwrap=$('#mwrap');
 function setMeter(kind){
   if(!kind){mwrap.classList.remove('on');return;}
   mwrap.classList.add('on');meter.className='meter '+kind;
-  mlab.innerHTML=kind==='pow'?'<span>よわい</span><b>ナイス</b><span>力みすぎ</span>':kind==='spin'?'<span>← 左カーブ</span><span>まっすぐ</span><span>右カーブ →</span>':'<span>← 左</span><span>まんなか</span><span>右 →</span>';
+  mlab.innerHTML=kind==='pow'?'<span>よわい</span><b style="position:absolute;left:84.5%;transform:translateX(-50%)">ナイス</b><span></span>':kind==='spin'?'<span>← 左カーブ</span><span>まっすぐ</span><span>右カーブ →</span>':'<span>← 左</span><span>まんなか</span><span>右 →</span>';
 }
 function setNeedle(v){needle.style.left=(clamp(v,0,1)*100)+'%';}
 let sayT=0;
@@ -638,7 +658,10 @@ function banner(t,sub,color,long){const b=$('#banner');b.className=long?'long':'
 
 // ---------- flow ----------
 function startGame(){
-  G.players=CH.map((ch,i)=>({ch,cpu:i!==chosen,frames:[],bonus:0,strikes:0,spares:0,gutters:0,golds:0,streak:0}));
+  const mk=(ch,name,cpu)=>({ch,name,cpu,frames:[],bonus:0,strikes:0,spares:0,gutters:0,golds:0,streak:0});
+  const hs=setup.slots.slice(0,setup.n);HUMANS=hs.length;
+  G.players=hs.map(s=>mk(CH[s.ch],s.name.trim()||CH[s.ch].name,false));
+  if(setup.cpu)CH.forEach((ch,i)=>{if(!hs.some(s=>s.ch===i))G.players.push(mk(ch,ch.name,true));});
   G.round=-1;$('#titleOv').hidden=true;['#panel','#hero','#badge','#mini'].forEach(s=>$(s).hidden=false);
   nextRound();
 }
@@ -676,14 +699,14 @@ function startTurn(){
   $('#heroAv').innerHTML=avatar(p.ch);
   renderChips();drawMini();
   G.phase='intro';G.pt=0;G.bx=0;G.sim=null;
-  banner(`${p.ch.name}の番!`,p.cpu?'CPU':'あなたの番だよ',p.ch.color);SFX.turn();
-  setSteps(-1);setMsg(p.cpu?`${p.ch.name}がじゅんび中…`:'もうすぐスタート');setMeter(null);
+  banner(`${esc(p.name)}の番!`,p.cpu?'CPU':HUMANS===1?'あなたの番だよ':'じゅんびしてね',p.ch.color);SFX.turn();
+  setSteps(-1);setMsg(p.cpu?`${esc(p.name)}がじゅんび中…`:'もうすぐスタート');setMeter(null);
   say(p.cpu?['いくよ〜!','見ててね!','ストライクねらう!','まかせて!'][Math.random()*4|0]:'がんばって!');
 }
 function beginBall(){
   const p=cur();G.view=G.pins;G.sim=null;G.pt=0;G.ff=false;drawMini();
   if(p.cpu){
-    G.phase='cpu';setSteps(-1);setMsg(`${p.ch.name}がねらっている… <small>(タップで早送り)</small>`);setMeter(null);
+    G.phase='cpu';setSteps(-1);setMsg(`${esc(p.name)}がねらっている… <small>(タップで早送り)</small>`);setMeter(null);
     G.plan=noisyShot(cpuPlan(G.pins,G.cond,p.ch),p.ch.skill);G.startX=G.bx;
   }else{
     G.phase='pos';G.locked={};setSteps(0);setMeter('aim');
@@ -698,7 +721,7 @@ function tap(){
     case'aim':SFX.lock();G.phase='power';G.pt=0;setSteps(2);setMeter('pow');setMsg('<b>パワー</b>! 緑のナイスゾーンでタップ');break;
     case'power':{SFX.lock();const pw=G.power;let note='';
       if(pw>0.95){G.aim=clamp(G.aim+(Math.random()-.5)*0.8,-AIM_MAX,AIM_MAX);note='力みすぎ! 方向がブレた';say('うわっ、力みすぎ!','boo');}
-      else if(pw>=0.78&&pw<=0.9){note='ナイス!';say('ナイスパワー!','yay');}
+      else if(pw>=0.82&&pw<=0.87){note='ナイス!';say('ナイスパワー!','yay');}
       else if(pw<0.5){note='ちょっとよわい…';}
       G.phase='spin';G.pt=0;setSteps(3);setMeter('spin');setMsg(`<b>カーブ</b>をタップで決める${note?` <small>(${note})</small>`:''}`);break;}
     case'spin':SFX.lock();throwBall({x:G.bx,aim:G.aim,power:G.power,spin:G.spin});break;
@@ -762,15 +785,19 @@ async function finish(){
   await sleep(500);
   const ranked=[...G.players].sort((a,b)=>scoreOf(b)-scoreOf(a));
   const rank=p=>1+G.players.filter(q=>scoreOf(q)>scoreOf(p)).length;
-  const me=G.players[chosen],myRank=rank(me);
-  const order=[ranked[1],ranked[0],ranked[2],ranked[3]];
+  const n=G.players.length,order=[1,0,2,3].filter(i=>i<n).map(i=>ranked[i]);
+  const hum=G.players.filter(p=>!p.cpu),me=hum[0],myRank=rank(me),top=ranked[0];
+  let head,lead;
+  if(HUMANS===1&&n>1){head=myRank===1?'あなたの優勝!':`あなたは ${myRank}位!`;lead=myRank===1?'おめでとう! パーティーの主役だ!':myRank<=2?'おしい! あと少しで1位!':'つぎはナイスゾーンをねらってみよう';}
+  else if(n===1){head=`${scoreOf(me)}点!`;lead='ひとりで練習おつかれさま。つぎは自己ベストをねらおう';}
+  else{const tied=G.players.filter(p=>scoreOf(p)===scoreOf(top));head=tied.length>1?'引き分け!':`${esc(top.name)}の優勝!`;lead=tied.length>1?tied.map(p=>esc(p.name)).join('・')+' が同点1位':(top.cpu?'CPUの勝ち! リベンジしよう':'おめでとう! パーティーの主役だ!');}
   const hgt={1:96,2:72,3:54,4:40},pcol={1:'#ffd23f',2:'#dfe3f0',3:'#ffb37a',4:'#e9e4fb'};
-  fc.innerHTML=`<p class="big">${myRank===1?'あなたの優勝!':`あなたは ${myRank}位!`}</p><p class="lead" style="margin:0">${myRank===1?'おめでとう! パーティーの主役だ!':myRank<=2?'おしい! あと少しで1位!':'つぎはナイスゾーンをねらってみよう'}</p>
-  <div class="rank">${order.map((p,i)=>{const r=rank(p);return`<div class="rk p${r}" style="animation-delay:${[.5,.9,.3,.1][i]}s">${avatar(p.ch)}<span class="nm">${p.ch.name}${p.cpu?'':'(あなた)'}</span><div class="ped" style="height:${hgt[r]}px;background:${pcol[r]}"><b>${r}位</b><small>${scoreOf(p)}点</small></div></div>`;}).join('')}</div>
+  fc.innerHTML=`<p class="big">${head}</p><p class="lead" style="margin:0">${lead}</p>
+  <div class="rank" style="grid-template-columns:repeat(${n},minmax(0,1fr))">${order.map((p,i)=>{const r=rank(p);return`<div class="rk p${r}" style="animation-delay:${[.5,.9,.3,.1][i]}s">${avatar(p.ch)}<span class="nm">${esc(p.name)}${p.cpu?'(CPU)':''}</span><div class="ped" style="height:${hgt[r]}px;background:${pcol[r]}"><b>${r}位</b><small>${scoreOf(p)}点</small></div></div>`;}).join('')}</div>
   <div class="sc-wrap" style="margin-top:14px"><table class="sc" id="scFinal"></table></div>
   <div class="btns"><button class="btn" id="againBtn" type="button">もう一回</button><a class="btn sm" href="/">アプリ一覧</a></div>`;
   renderCard();$('#scFinal').innerHTML=$('#scTable').innerHTML;
-  if(myRank===1){burst(260);SFX.fanfare();}else SFX.spare();
+  if(!top.cpu){burst(260);SFX.fanfare();}else SFX.spare();
   $('#againBtn').onclick=()=>{$('#finalOv').hidden=true;startGame();};
 }
 
@@ -784,9 +811,9 @@ function update(dt){
     case'roulette':rouletteUpdate(dt);break;
     case'intro':if(G.pt>1.3)beginBall();break;
     case'pos':setNeedle(0.5+G.bx/0.84);break;
-    case'aim':G.aim=AIM_MAX*Math.sin(2*Math.PI*(G.pt/2.2+G.off));setNeedle(0.5+G.aim/AIM_MAX/2);break;
-    case'power':G.power=tri(G.pt/2.3);setNeedle(G.power);break;
-    case'spin':G.spin=2*tri(G.pt/1.5+0.25)-1;setNeedle(0.5+G.spin/2);break;
+    case'aim':G.aim=AIM_MAX*Math.sin(2*Math.PI*(G.pt/1.5+G.off));setNeedle(0.5+G.aim/AIM_MAX/2);break;
+    case'power':G.power=tri(G.pt/1.5);setNeedle(G.power);break;
+    case'spin':G.spin=2*tri(G.pt/1.0+0.25)-1;setNeedle(0.5+G.spin/2);break;
     case'cpu':{const sp=G.ff?3:1;G.pt+=dt*(sp-1);const k=clamp(G.pt/0.6,0,1);G.bx=G.startX+(G.plan.x-G.startX)*(1-Math.pow(1-k,3));if(G.pt>1.5)throwBall(G.plan);break;}
     case'roll':{
       const S=G.sim,sp=(G.ff?4:cur().cpu?1.4:1);let n=Math.round(dt*sp*240);const h0=S.hits;
@@ -826,11 +853,21 @@ $('#muteBtn').onclick=e=>{muted=!muted;e.currentTarget.textContent=muted?'音 OF
 
 // ---------- title ----------
 $('#logo').innerHTML=[...'ストライク★パーティー'].map((c,i)=>`<span style="color:${['#ffd23f','#ff4f6d','#7fd6ff','#2ec27e','#ff8a3d','#c7a6ff'][i%6]}">${c}</span>`).join('');
-function renderPick(){
-  $('#pick').innerHTML=CH.map((c,i)=>`<button type="button" class="pc" style="--c:${c.color};--cd:${c.dark}" aria-pressed="${i===chosen}" data-i="${i}">${avatar(c)}<b>${c.name}</b><small>${c.blurb}<br>CPUの強さ ${'★'.repeat(c.stars)}${'☆'.repeat(3-c.stars)}</small></button>`).join('');
+function renderSetup(){
+  document.querySelectorAll('#humans button').forEach(b=>b.setAttribute('aria-pressed',+b.dataset.n===setup.n));
+  document.querySelectorAll('#cpuSeg button').forEach(b=>b.setAttribute('aria-pressed',(b.dataset.c==='1')===setup.cpu));
+  $('#cpuSeg').hidden=setup.n===4;
+  $('#prows').innerHTML=setup.slots.slice(0,setup.n).map((s,i)=>{const c=CH[s.ch];
+    return`<div class="prow" style="--c:${c.color};--cd:${c.dark}"><span class="pn">P${i+1}</span><input type="text" maxlength="8" data-i="${i}" value="${esc(s.name)}" placeholder="${c.name}" aria-label="P${i+1}のなまえ"><div class="cs">${CH.map((k,j)=>`<button type="button" style="--c:${k.color}" data-i="${i}" data-c="${j}" aria-pressed="${j===s.ch}" aria-label="${k.name}">${avatar(k)}</button>`).join('')}</div></div>`;}).join('');
+  const cpus=CH.filter((c,i)=>!setup.slots.slice(0,setup.n).some(s=>s.ch===i));
+  $('#cpuinfo').innerHTML=setup.cpu&&setup.n<4?'CPU: '+cpus.map(c=>`${c.name} ${'★'.repeat(c.stars)}${'☆'.repeat(3-c.stars)}`).join(' / '):setup.n===1?'ひとりで練習モード':`${setup.n}人だけで対戦`;
 }
-renderPick();
-$('#pick').addEventListener('click',e=>{const b=e.target.closest('.pc');if(!b)return;chosen=+b.dataset.i;renderPick();ensureAudio();SFX.tick();});
+renderSetup();
+$('#humans').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;setup.n=+b.dataset.n;saveSetup();renderSetup();ensureAudio();SFX.tick();});
+$('#cpuSeg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;setup.cpu=b.dataset.c==='1';saveSetup();renderSetup();ensureAudio();SFX.tick();});
+$('#prows').addEventListener('click',e=>{const b=e.target.closest('.cs button');if(!b)return;const i=+b.dataset.i,c=+b.dataset.c,j=setup.slots.findIndex(s=>s.ch===c);
+  [setup.slots[i].ch,setup.slots[j].ch]=[c,setup.slots[i].ch];saveSetup();renderSetup();ensureAudio();SFX.tick();});
+$('#prows').addEventListener('input',e=>{const t=e.target;if(t.tagName!=='INPUT')return;setup.slots[+t.dataset.i].name=t.value.slice(0,8);saveSetup();});
 $('#frames').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;G.N=+b.dataset.n;document.querySelectorAll('#frames button').forEach(x=>x.setAttribute('aria-pressed',x===b));});
 $('#startBtn').onclick=()=>{ensureAudio();SFX.turn();startGame();};
 G.view=newRack(G.cond);
