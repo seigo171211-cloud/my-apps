@@ -511,7 +511,7 @@ const P={x:0,z:2,tx:0,tz:2,roll:0,pitch:0,hp:100,inv:0,lvl:1,gunT:0,misT:1,alive
 P.mesh=buildJet(MAT.body,MAT.dark,GM.blue);scene.add(P.mesh);
 const enemies=[],ebul=[],shots=[],missiles=[],items=[];
 const cam={x:0,z:0};
-const diff=()=>1+G.stage*.2;
+const diff=()=>1.35+G.stage*.28;
 const later=(t,fn)=>G.timers.push({t,fn});
 
 // ── enemy bullets
@@ -536,7 +536,7 @@ const B={
     if(e.t>6.5){explode(e.x,ALT,e.z,.5);return false}return e.z<62},
 };
 const FIRE={
-  drone(e,dt,d){if(e.z>-190&&e.z<-28&&(e.fireT-=dt)<=0){fan(e,1,0,25+d*3,0);e.fireT=rnd(2.4,3.8)/d}},
+  drone(e,dt,d){if(e.z>-190&&e.z<-28&&(e.fireT-=dt)<=0){fan(e,1,0,25+d*3,0);e.fireT=rnd(1.6,2.7)/d}},
   fighter(e,dt,d){if(!e.hov)return;if((e.fireT-=dt)<=0){if(e.bn===undefined||e.bn<=0){e.bn=3}fan(e,3,.2,28+d*3,1);e.bn--;e.fireT=e.bn>0?.16:rnd(1.5,2.1)/Math.sqrt(d)}},
   gunship(e,dt,d){if(!e.hov)return;e.ang=(e.ang||0)+dt*1.1;
     if((e.fireT-=dt)<=0){for(let i=0;i<4;i++){const a=e.ang+i*PI/2;if(Math.cos(a)>-.2)eb(e.x,e.z,a,19+d*2,0)}e.fireT=.2;sfx('eshot')}
@@ -554,7 +554,7 @@ const ET={
 function spawn(type,x,z,beh,o={}){
   const T=ET[type],mat=MAT.eBody.clone(),mesh=T.build(mat);mesh.scale.setScalar(T.sc);mesh.rotation.order='YXZ';mesh.rotation.y=PI;scene.add(mesh);
   const hp=T.hp*(1+(diff()-1)*.6);
-  const e={type,mesh,mat,x,z,px:x,pz:z,hp,max:hp,r:T.r,score:T.score,t:0,beh,fireT:rnd(.6,2.4),flash:0,yaw:PI,roll:0,grp:o.grp,drop:o.drop};
+  const e={type,mesh,mat,x,z,px:x,pz:z,hp,max:hp,r:T.r,score:T.score,t:0,beh,fireT:rnd(.4,1.6),flash:0,yaw:PI,roll:0,grp:o.grp,drop:o.drop};
   enemies.push(e);return e;
 }
 function removeEnemy(e){scene.remove(e.mesh);e.mat.dispose();if(e.parts)e.parts.forEach(p=>p.mat&&p.mat.dispose());e.dead=true}
@@ -571,11 +571,11 @@ const W={
 };
 function nextWave(){
   const d=diff(),t=G.t,pool=['vee','snake','sweep'];
-  if(t>10||G.stage>0)pool.push('fighters','fighters');
-  if(G.stage>0||t>30)pool.push('dive');
+  if(t>5||G.stage>0)pool.push('fighters','fighters');
+  if(G.stage>0||t>16)pool.push('dive');
   const k=pool[Math.floor(rnd(pool.length))];W[k](d);
-  if(d>1.3&&Math.random()<.35)later(1.4,()=>W[Math.random()<.5?'vee':'sweep'](d));
-  G.waveT=rnd(3.6,4.8)/Math.pow(d,.45);
+  if(Math.random()<.45)later(1.4,()=>W[Math.random()<.5?'vee':'sweep'](d));
+  G.waveT=rnd(2.7,3.6)/Math.pow(d,.5);
 }
 
 // ── boss
@@ -743,7 +743,7 @@ function updateEnemies(dt){
 function updateBullets(dt){
   for(let i=ebul.length-1;i>=0;i--){const b=ebul[i];b.x+=b.vx*dt;b.z+=b.vz*dt;b.t+=dt;
     if(b.z>52||b.z<-300||Math.abs(b.x)>70||b.t>14){ebul[i]=ebul[ebul.length-1];ebul.pop();continue}
-    if(P.alive&&state==='play'){const dx=b.x-P.x,dz=b.z-P.z;if(dx*dx+dz*dz<1.7){hurt(18);ebul[i]=ebul[ebul.length-1];ebul.pop();continue}}
+    if(P.alive&&state==='play'){const dx=b.x-P.x,dz=b.z-P.z;if(dx*dx+dz*dz<1.7){hurt(23);ebul[i]=ebul[ebul.length-1];ebul.pop();continue}}
     const c=BC[b.k],s=b.k===2?1.55:1.3;ALP.add(b.x,ALT,b.z,0,0,0,s*.8,0,0,0,.5,0,2);ADD.add(b.x,ALT,b.z,0,0,0,s,c[0],c[1],c[2],1,0,1)}
 }
 function updateItems(dt){
@@ -753,7 +753,7 @@ function updateItems(dt){
     const c=it.type==='P'?[6,3.4,.8]:it.type==='R'?[1.2,6,2.6]:[1.5,4,7];ADD.add(it.x,ALT,it.z,0,0,0,2.4+Math.sin(it.t*6)*.3,c[0],c[1],c[2],.5);ADD.add(it.x,ALT,it.z,0,0,0,1.5,c[0],c[1],c[2],.8,it.t*2,2);
     let gone=it.z>55;
     if(P.alive&&state==='play'&&d<2.6){gone=true;sfx('pick');part(addP,{x:it.x,y:ALT,z:it.z,life:.35,s0:1,s1:7,r:c[0],g:c[1],b:c[2],kind:2});
-      if(it.type==='P'){if(P.lvl<5)P.lvl++;else G.score+=2000}else if(it.type==='R')P.hp=Math.min(100,P.hp+35);else G.burst=Math.min(100,G.burst+45);G.score+=200}
+      if(it.type==='P'){if(P.lvl<5)P.lvl++;else G.score+=2000}else if(it.type==='R')P.hp=Math.min(100,P.hp+30);else G.burst=Math.min(100,G.burst+45);G.score+=200}
     if(gone){scene.remove(it.m);it.m.material.dispose();items.splice(i,1)}}
 }
 function updateStage(dt){
@@ -767,7 +767,7 @@ function updateStage(dt){
     if(G.gunships===0&&G.stage===0&&G.t>len*.6){W.gunship()}
     if(G.t>len+2&&(enemies.length===0||G.t>len+9)){G.phase='warn';G.endT=3.2;banner('WARNING','大型機 接近',true,3.2);sfx('warn')}
   }else if(G.phase==='warn'){if((G.endT-=dt)<=0){G.phase='boss';spawnBoss()}}
-  else if(G.phase==='clear'){if((G.endT-=dt)<=0){G.stage++;P.hp=Math.min(100,P.hp+25);beginStage()}}
+  else if(G.phase==='clear'){if((G.endT-=dt)<=0){G.stage++;P.hp=Math.min(100,P.hp+15);beginStage()}}
 }
 function updateFx(dt){
   for(let i=chunks.length-1;i>=0;i--){const c=chunks[i];c.t+=dt;c.vy-=30*dt;c.x+=c.vx*dt;c.y+=c.vy*dt;c.z+=c.vz*dt;
