@@ -120,7 +120,7 @@ h2{margin:0;font:700 34px var(--num);letter-spacing:.2em}
   <div class="best">BEST<b id="bestT">0</b></div>
   <div class="col"><button class="btn" id="startBtn">出撃する</button></div>
   <ul class="how">
-    <li><b>ドラッグ</b>で移動（射撃とミサイルは自動）</li>
+    <li><b>ドラッグ</b>で移動（射撃とロケットは自動）</li>
     <li><b>ダブルタップ</b>か右下ボタンでバースト（弾消し）</li>
     <li><span class="dot" style="background:#ffb547"></span>武装強化<span class="dot" style="background:#5dffa8"></span>修理<span class="dot" style="background:#7fd8ff"></span>バースト</li>
     <li class="pc">PC: マウスドラッグ / WASD・矢印で移動、Spaceでバースト、Escでポーズ</li>
@@ -647,14 +647,9 @@ function fireGuns(){
 }
 function fireMissiles(){
   const n=P.lvl>=4?4:2;let c=0;
-  for(let i=0;i<n;i++){const s=i%2?1:-1;missiles.push({x:P.x+s*(1.8+(i>1?.8:0)),z:P.z+.8,vx:s*(12+i*3),vz:8,t:0,tg:null,h:PI});c++}
+  for(let i=0;i<n;i++){const s=i%2?1:-1;missiles.push({x:P.x+s*(1.8+(i>1?.8:0)),z:P.z+.8,vx:s*(12+i*3),vz:8,t:0,h:PI});c++}
   if(c)sfx('missile');
 }
-function pickTarget(m){let best=null,bd=1e9;
-  for(const e of enemies){if(e.dead||e.dying||e.z>m.z-4||e.z<-230)continue;let ex=e.x,ez=e.z,pt=null;
-    if(e.parts){pt=e.parts.find(p=>!p.core&&p.hp>0)||e.parts[2];ex+=pt.dx;ez+=pt.dz}
-    const d=Math.hypot(ex-m.x,ez-m.z)+(e.lock||0)*30;if(d<bd){bd=d;best=e;m.pt=pt}}
-  if(best)best.lock=(best.lock||0)+1;return best}
 
 // ───────────────────────── update
 function reset(){
@@ -703,8 +698,7 @@ function updateShots(dt){
     let gone=s.t>.85;if(!gone&&tryHit(x0,z0,s.x,s.z,1,.3)){sparks(s.x,s.z,2);gone=true}
     if(gone){shots[i]=shots[shots.length-1];shots.pop()}else ADD.add(s.x,ALT,s.z,s.vx*.026,0,s.vz*.026,.26,6,3.6,1.3,1)}
   for(let i=missiles.length-1;i>=0;i--){const m=missiles[i];m.t+=dt;const x0=m.x,z0=m.z;
-    if(m.t>.16){if(!m.tg||m.tg.dead||m.tg.dying)m.tg=pickTarget(m);
-      let want=PI;if(m.tg){const t=m.tg,pt=m.pt&&t.parts?m.pt:null;want=Math.atan2((t.x+(pt?pt.dx:0))-m.x,(t.z+(pt?pt.dz:0))-m.z)}
+    if(m.t>.16){const want=PI;   // rockets fly straight ahead: no lock-on
       m.h+=clamp(angDiff(want,m.h),-7*dt,7*dt);const sp=Math.min(170,40+m.t*260);m.vx=Math.sin(m.h)*sp;m.vz=Math.cos(m.h)*sp;
       if(Math.random()<dt*70)part(alpP,{x:m.x,y:ALT,z:m.z,life:.9,s0:.3,s1:1.7,r:.75,g:.75,b:.78,a:.38,air:.5,vr:rnd(-1,1)})}
     m.x+=m.vx*dt;m.z+=m.vz*dt;
@@ -715,7 +709,7 @@ function updateShots(dt){
 function updateEnemies(dt){
   const d=diff();
   for(let i=enemies.length-1;i>=0;i--){const e=enemies[i];if(e.dead){enemies.splice(i,1);continue}
-    e.t+=dt;e.lock=0;e.px=e.x;e.pz=e.z;
+    e.t+=dt;e.px=e.x;e.pz=e.z;
     if(e.dying){e.dt+=dt;e.mesh.position.y=ALT-e.dt*e.dt*1.6;e.mesh.rotation.z+=dt*.12;e.z+=6*dt;
       if(Math.random()<dt*24)part(alpP,{x:e.x+rnd(-18,18),y:e.mesh.position.y+1,z:e.z+rnd(-5,6),vy:4,life:1.8,s0:2,s1:8,r:.05,g:.05,b:.06,a:.8,air:.8});
       e.mesh.position.x=e.x;e.mesh.position.z=e.z;continue}
