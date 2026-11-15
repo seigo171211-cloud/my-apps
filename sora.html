@@ -121,7 +121,7 @@ h2{margin:0;font:700 34px var(--num);letter-spacing:.2em}
   <div class="col"><button class="btn" id="startBtn">出撃する</button></div>
   <ul class="how">
     <li><b>ドラッグ</b>で移動（射撃とロケットは自動）</li>
-    <li><b>ダブルタップ</b>か右下ボタンでバースト（弾消し）</li>
+    <li><b>ダブルタップ</b>か右下ボタンでバースト（周囲の敵弾だけ消す）</li>
     <li><span class="dot" style="background:#ffb547"></span>武装強化<span class="dot" style="background:#5dffa8"></span>修理<span class="dot" style="background:#7fd8ff"></span>バースト</li>
     <li class="pc">PC: マウスドラッグ / WASD・矢印で移動、Spaceでバースト、Escでポーズ</li>
   </ul>
@@ -511,7 +511,7 @@ const P={x:0,z:2,tx:0,tz:2,roll:0,pitch:0,hp:100,inv:0,lvl:1,gunT:0,misT:1,alive
 P.mesh=buildJet(MAT.body,MAT.dark,GM.blue);scene.add(P.mesh);
 const enemies=[],ebul=[],shots=[],missiles=[],items=[];
 const cam={x:0,z:0};
-const diff=()=>1.35+G.stage*.28;
+const diff=()=>1.55+G.stage*.32;
 const later=(t,fn)=>G.timers.push({t,fn});
 
 // ── enemy bullets
@@ -567,7 +567,7 @@ const W={
   sweep(){const side=Math.random()<.5?-1:1,n=6,g=grp(n);for(let i=0;i<n;i++)later(i*.28,()=>spawn('drone',side*48,-150,B.sweep(side),{grp:g}))},
   fighters(d){const n=d>1.5?3:2,g=grp(n);for(let i=0;i<n;i++){const xh=(i-(n-1)/2)*10+rnd(-2,2);spawn('fighter',xh+rnd(-25,25),-300,B.hover(xh,rnd(-98,-72),5.5),{grp:g})}},
   dive(d){const n=Math.min(6,2+Math.round(d));for(let i=0;i<n;i++)later(i*.5,()=>spawn('dart',clamp(P.x+rnd(-6,6),-14,14),-470,B.dive()))},
-  gunship(){G.gunships++;spawn('gunship',rnd(-8,8),-310,B.hover(rnd(-5,5),-102,12),{drop:G.gunships%2?'P':'R'})},
+  gunship(){G.gunships++;spawn('gunship',rnd(-8,8),-310,B.hover(rnd(-5,5),-102,12),{drop:'P'})},
 };
 function nextWave(){
   const d=diff(),t=G.t,pool=['vee','snake','sweep'];
@@ -575,7 +575,7 @@ function nextWave(){
   if(G.stage>0||t>16)pool.push('dive');
   const k=pool[Math.floor(rnd(pool.length))];W[k](d);
   if(Math.random()<.45)later(1.4,()=>W[Math.random()<.5?'vee':'sweep'](d));
-  G.waveT=rnd(2.7,3.6)/Math.pow(d,.5);
+  G.waveT=rnd(2.5,3.3)/Math.pow(d,.5);
 }
 
 // ── boss
@@ -602,7 +602,7 @@ function killBoss(b){
   b.dying=true;b.dt=0;ebul.length=0;G.slow=1.4;addScore(b.score);sfx('clear');
   for(let i=0;i<14;i++)later(i*.2,()=>{explode(b.x+rnd(-20,20),ALT+rnd(0,2),b.z+rnd(-6,8),rnd(1,2))});
   later(3,()=>{explode(b.x,ALT,b.z,4);for(let i=0;i<5;i++)explode(b.x+rnd(-16,16),ALT,b.z+rnd(-6,6),2.4,true);G.flash=.7;G.hitstop=.12;buzz(200);
-    for(let i=0;i<3;i++)dropItem(b.x+rnd(-8,8),b.z+rnd(-4,4),'PRB'[i]);removeEnemy(b);G.boss=null;$('boss').hidden=true;G.phase='clear';G.endT=4.5});
+    for(let i=0;i<2;i++)dropItem(b.x+rnd(-8,8),b.z+rnd(-4,4),'PR'[i]);removeEnemy(b);G.boss=null;$('boss').hidden=true;G.phase='clear';G.endT=4.5});
 }
 
 // ── scoring / items / damage
@@ -613,28 +613,31 @@ function killEnemy(e){
   if(e.type==='boss'){killBoss(e);return}
   const big=e.type==='gunship';explode(e.x,ALT,e.z,big?2.6:e.type==='drone'?.8:e.type==='hmis'?.5:1.15);
   if(big){G.hitstop=.07;G.flash=.25;buzz(60)}
-  G.chain++;G.chainT=2.6;G.kills++;addScore(e.score);G.burst=Math.min(100,G.burst+e.score/45+1.2);
+  G.chain++;G.chainT=2.6;G.kills++;addScore(e.score);G.burst=Math.min(100,G.burst+e.score/320+.35);
   if(e.drop)dropItem(e.x,e.z,e.drop);
-  else if(e.grp){e.grp.killed++;if(e.grp.killed===e.grp.n){const r=Math.random();dropItem(e.x,e.z,P.lvl<5&&r<.5?'P':r<.7?'R':r<.88?'B':'P')}}
+  else if(e.grp){e.grp.killed++;if(e.grp.killed===e.grp.n&&Math.random()<.2){const r=Math.random();dropItem(e.x,e.z,r<.68?'P':r<.82?'R':'B')}}
   removeEnemy(e);
 }
 function hitEnemy(e,dmg,x,z,part){
   if(e.dying)return;
-  if(part){if(part.hp<=0)return;const armored=part.core&&e.parts.some(p=>!p.core&&p.hp>0);part.hp-=dmg*(armored?.4:1);G.burst=Math.min(100,G.burst+dmg*.05);
+  if(part){if(part.hp<=0)return;const armored=part.core&&e.parts.some(p=>!p.core&&p.hp>0);part.hp-=dmg*(armored?.4:1);G.burst=Math.min(100,G.burst+dmg*.008);
     if(part.hp<=0){part.hp=0;explode(e.x+part.dx,ALT+1,e.z+part.dz,2.2);G.hitstop=.06;if(part.core)killEnemy(e);else{part.m.visible=false;addScore(5000)}}}
   else{e.hp-=dmg;if(e.hp<=0){killEnemy(e);return}}
   e.flash=1;sfx('hit');
 }
 function hurt(d){
-  if(P.inv>0||!P.alive)return;P.hp-=d;P.inv=1.1;G.hurtV=1;G.shake=Math.min(2.5,G.shake+1.2);G.chain=0;sfx('hurt');buzz(90);
+  if(P.inv>0||!P.alive)return;P.hp-=d;P.inv=.9;G.hurtV=1;G.shake=Math.min(2.5,G.shake+1.2);G.chain=0;sfx('hurt');buzz(90);
   for(let i=0;i<8;i++)sparks(P.x+rnd(-1,1),P.z+rnd(-1,1),2);
   if(P.hp<=0){P.hp=0;P.alive=false;P.mesh.visible=false;explode(P.x,ALT,P.z,3);G.flash=.5;G.slow=1.5;G.endT=2.6;state='dead';buzz(300)}
 }
 function doBurst(){
-  if(state!=='play'||G.burst<100||!P.alive)return;G.burst=0;P.inv=Math.max(P.inv,1.8);G.flash=.55;G.shake=2;G.slow=.5;sfx('burst');buzz(120);
-  part(addP,{x:P.x,y:ALT,z:P.z,life:.9,s0:3,s1:150,r:2.5,g:5,b:8,a:1,kind:2});part(addP,{x:P.x,y:ALT,z:P.z,life:.5,s0:6,s1:50,r:3,g:6,b:9});
-  for(const b of ebul){part(addP,{x:b.x,y:ALT,z:b.z,life:.5,s0:1,s1:.2,r:2,g:5,b:8,vy:6});G.score+=10}ebul.length=0;
-  for(const e of enemies.slice()){if(e.z<50&&e.z>-200){if(e.parts){for(const p of e.parts)if(p.hp>0&&(!p.core||e.parts.every(q=>q.core||q.hp<=0)))hitEnemy(e,45,e.x,e.z,p)}else hitEnemy(e,45,e.x,e.z)}}
+  // Defensive pulse: wipes enemy shots (and incoming missiles) in a limited radius around the jet. It does not hurt aircraft.
+  if(state!=='play'||G.burst<100||!P.alive)return;G.burst=0;P.inv=Math.max(P.inv,.9);G.flash=.3;G.shake=1.2;sfx('burst');buzz(80);
+  const R=34;
+  part(addP,{x:P.x,y:ALT,z:P.z,life:.45,s0:3,s1:R,r:2.5,g:5,b:8,a:1,kind:2});part(addP,{x:P.x,y:ALT,z:P.z,life:.35,s0:5,s1:R*.6,r:1.5,g:3,b:4.5});
+  for(let i=ebul.length-1;i>=0;i--){const b=ebul[i];if(Math.hypot(b.x-P.x,b.z-P.z)>R)continue;
+    part(addP,{x:b.x,y:ALT,z:b.z,life:.5,s0:1,s1:.2,r:2,g:5,b:8,vy:6});G.score+=10;ebul[i]=ebul[ebul.length-1];ebul.pop()}
+  for(const e of enemies.slice())if(e.type==='hmis'&&Math.hypot(e.x-P.x,e.z-P.z)<R)hitEnemy(e,99,e.x,e.z);
 }
 
 // ── player weapons
@@ -737,7 +740,7 @@ function updateEnemies(dt){
 function updateBullets(dt){
   for(let i=ebul.length-1;i>=0;i--){const b=ebul[i];b.x+=b.vx*dt;b.z+=b.vz*dt;b.t+=dt;
     if(b.z>52||b.z<-300||Math.abs(b.x)>70||b.t>14){ebul[i]=ebul[ebul.length-1];ebul.pop();continue}
-    if(P.alive&&state==='play'){const dx=b.x-P.x,dz=b.z-P.z;if(dx*dx+dz*dz<1.7){hurt(23);ebul[i]=ebul[ebul.length-1];ebul.pop();continue}}
+    if(P.alive&&state==='play'){const dx=b.x-P.x,dz=b.z-P.z;if(dx*dx+dz*dz<1.7){hurt(26);ebul[i]=ebul[ebul.length-1];ebul.pop();continue}}
     const c=BC[b.k],s=b.k===2?1.55:1.3;ALP.add(b.x,ALT,b.z,0,0,0,s*.8,0,0,0,.5,0,2);ADD.add(b.x,ALT,b.z,0,0,0,s,c[0],c[1],c[2],1,0,1)}
 }
 function updateItems(dt){
@@ -747,7 +750,7 @@ function updateItems(dt){
     const c=it.type==='P'?[6,3.4,.8]:it.type==='R'?[1.2,6,2.6]:[1.5,4,7];ADD.add(it.x,ALT,it.z,0,0,0,2.4+Math.sin(it.t*6)*.3,c[0],c[1],c[2],.5);ADD.add(it.x,ALT,it.z,0,0,0,1.5,c[0],c[1],c[2],.8,it.t*2,2);
     let gone=it.z>55;
     if(P.alive&&state==='play'&&d<2.6){gone=true;sfx('pick');part(addP,{x:it.x,y:ALT,z:it.z,life:.35,s0:1,s1:7,r:c[0],g:c[1],b:c[2],kind:2});
-      if(it.type==='P'){if(P.lvl<5)P.lvl++;else G.score+=2000}else if(it.type==='R')P.hp=Math.min(100,P.hp+30);else G.burst=Math.min(100,G.burst+45);G.score+=200}
+      if(it.type==='P'){if(P.lvl<5)P.lvl++;else G.score+=2000}else if(it.type==='R')P.hp=Math.min(100,P.hp+25);else G.burst=Math.min(100,G.burst+30);G.score+=200}
     if(gone){scene.remove(it.m);it.m.material.dispose();items.splice(i,1)}}
 }
 function updateStage(dt){
@@ -761,7 +764,7 @@ function updateStage(dt){
     if(G.gunships===0&&G.stage===0&&G.t>len*.6){W.gunship()}
     if(G.t>len+2&&(enemies.length===0||G.t>len+9)){G.phase='warn';G.endT=3.2;banner('WARNING','大型機 接近',true,3.2);sfx('warn')}
   }else if(G.phase==='warn'){if((G.endT-=dt)<=0){G.phase='boss';spawnBoss()}}
-  else if(G.phase==='clear'){if((G.endT-=dt)<=0){G.stage++;P.hp=Math.min(100,P.hp+15);beginStage()}}
+  else if(G.phase==='clear'){if((G.endT-=dt)<=0){G.stage++;beginStage()}}
 }
 function updateFx(dt){
   for(let i=chunks.length-1;i>=0;i--){const c=chunks[i];c.t+=dt;c.vy-=30*dt;c.x+=c.vx*dt;c.y+=c.vy*dt;c.z+=c.vz*dt;
